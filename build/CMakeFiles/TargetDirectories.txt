@@ -1,0 +1,4 @@
+C:/Users/sksk1/Documents/לימודים/BootCamp/CTD/CTD25_Solutions/KFC_Merged/build/CMakeFiles/kungfu_chess_lib.dir
+C:/Users/sksk1/Documents/לימודים/BootCamp/CTD/CTD25_Solutions/KFC_Merged/build/CMakeFiles/KungFuChess.dir
+C:/Users/sksk1/Documents/לימודים/BootCamp/CTD/CTD25_Solutions/KFC_Merged/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/sksk1/Documents/לימודים/BootCamp/CTD/CTD25_Solutions/KFC_Merged/build/CMakeFiles/ZERO_CHECK.dir
