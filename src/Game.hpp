@@ -86,6 +86,7 @@ private:
     // Selected piece for user interaction
     PiecePtr selected_piece_ = nullptr;
     std::pair<int, int> cursor_pos_ = {0, 0};
+    std::pair<int, int> selected_piece_pos_ = {-1, -1};
     bool is_selecting_target_ = false;
     int current_player_ = 1;  // Current active player
 

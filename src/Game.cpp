@@ -114,6 +114,14 @@ void Game::run_game_loop(int num_iterations, bool is_with_graphics) {
                 display_board.img->draw_rect(cursor_pos_pix.first, cursor_pos_pix.second, 
                                            cell_size, cell_size, {0, 255, 0}); // Green border
                 
+                // Draw blue border around selected piece
+                if (selected_piece_) {
+                    auto selected_pos_m = display_board.cell_to_m(selected_piece_pos_);
+                    auto selected_pos_pix = display_board.m_to_pix(selected_pos_m);
+                    display_board.img->draw_rect(selected_pos_pix.first, selected_pos_pix.second, 
+                                               cell_size, cell_size, {255, 0, 0}); // Blue border
+                }
+                
                 display_board.show();
                 
                 // Handle input in main loop where window exists
@@ -164,9 +172,32 @@ void Game::process_input(const Command& cmd) {
     else if (cmd.type == "left") move_cursor(-1, 0);
     else if (cmd.type == "right") move_cursor(1, 0);
     else if (cmd.type == "select") {
-        auto cell_pieces_it = pos.find(cursor_pos_);
-        if (cell_pieces_it != pos.end() && !cell_pieces_it->second.empty()) {
-            selected_piece_ = cell_pieces_it->second[0];
+        // Enhanced selection logic from movement-logic branch
+        if (selected_piece_ == nullptr) {
+            // First press - pick up piece under cursor
+            auto cell_pieces_it = pos.find(cursor_pos_);
+            if (cell_pieces_it != pos.end() && !cell_pieces_it->second.empty()) {
+                selected_piece_ = cell_pieces_it->second[0];
+                selected_piece_pos_ = cursor_pos_;
+            }
+        } else if (cursor_pos_ == selected_piece_pos_) {
+            // Same position - deselect
+            selected_piece_ = nullptr;
+            selected_piece_pos_ = {-1, -1};
+        } else {
+            // Different position - create move command
+            Command move_cmd(cmd.timestamp, selected_piece_->id, "move", {selected_piece_pos_, cursor_pos_});
+            
+            // Process the move command through state machine
+            auto piece_it = piece_by_id.find(move_cmd.piece_id);
+            if (piece_it != piece_by_id.end()) {
+                auto piece = piece_it->second;
+                piece->on_command(move_cmd, pos);
+            }
+            
+            // Reset selection
+            selected_piece_ = nullptr;
+            selected_piece_pos_ = {-1, -1};
         }
     }
 }
