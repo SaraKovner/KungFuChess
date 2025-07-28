@@ -2,6 +2,7 @@
 
 #include "Board.hpp"
 #include "PieceFactory.hpp"
+#include "Command.hpp"
 #include <memory>
 #include <vector>
 #include <stdexcept>

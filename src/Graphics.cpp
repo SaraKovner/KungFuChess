@@ -35,10 +35,8 @@ Graphics::Graphics(const std::string& sprites_folder,
                 return num_a < num_b;
             });
             
-            std::cout << "Loading frames in order:" << std::endl;
             for(size_t i = 0; i < pngs.size(); ++i) {
                 const auto& p = pngs[i];
-                std::cout << "Frame " << i << ": " << p.filename().string() << std::endl;
                 auto img_ptr = img_factory->load(p.string(), {80, 80});
                 if(img_ptr) {
                     frames.push_back(img_ptr);
@@ -71,6 +69,6 @@ void Graphics::update(int now_ms) {
 
 const ImgPtr Graphics::get_img() const {
 	if (frames.empty()) throw std::runtime_error("Graphics has no frames loaded");
-	std::cout << "[FRAME] Showing frame " << cur_frame << "/" << frames.size() << " (should be image " << (cur_frame + 1) << ".png)" << std::endl;
+	// Frame display - removed spam
 	return frames[cur_frame];
 }
