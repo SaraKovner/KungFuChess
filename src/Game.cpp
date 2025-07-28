@@ -200,23 +200,26 @@ void Game::process_input(const Command& cmd) {
             selected_piece_ = nullptr;
             selected_piece_pos_ = {-1, -1};
         } else {
-            // Different position - create move command
-            try {
-                Command move_cmd(cmd.timestamp, selected_piece_->id, "move", {selected_piece_pos_, cursor_pos_});
-                
-                // Process the move command through state machine
-                auto piece_it = piece_by_id.find(move_cmd.piece_id);
-                if (piece_it != piece_by_id.end()) {
-                    auto piece = piece_it->second;
-                    if (piece && piece->state) {
-                        // Update position map again before passing to piece
-                        update_cell2piece_map();
-                        piece->on_command(move_cmd, pos);
+            // Different position - validate and create move command
+            if (is_move_valid(selected_piece_, selected_piece_pos_, cursor_pos_)) {
+                try {
+                    Command move_cmd(cmd.timestamp, selected_piece_->id, "move", {selected_piece_pos_, cursor_pos_});
+                    
+                    // Process the move command through state machine
+                    auto piece_it = piece_by_id.find(move_cmd.piece_id);
+                    if (piece_it != piece_by_id.end()) {
+                        auto piece = piece_it->second;
+                        if (piece && piece->state) {
+                            // Update position map again before passing to piece
+                            update_cell2piece_map();
+                            piece->on_command(move_cmd, pos);
+                        }
                     }
+                } catch (const std::exception& e) {
+                    // Handle move command errors silently
                 }
-            } catch (const std::exception& e) {
-                // Handle move command errors silently
             }
+            // If move is invalid, silently ignore (piece stays selected)
             
             // Reset selection
             selected_piece_ = nullptr;
@@ -264,8 +267,11 @@ void Game::handle_mouse_click(int x, int y) {
         select_piece_at(x, y);
     } else {
         if (selected_piece_) {
-            Command move_cmd(game_time_ms(), selected_piece_->id, "move", {{cursor_pos_.first, cursor_pos_.second}, {x, y}}, 1);
-            enqueue_command(move_cmd);
+            auto start_cell = selected_piece_->current_cell();
+            if (is_move_valid(selected_piece_, start_cell, {x, y})) {
+                Command move_cmd(game_time_ms(), selected_piece_->id, "move", {start_cell, {x, y}}, 1);
+                enqueue_command(move_cmd);
+            }
         }
         cancel_selection();
     }
@@ -295,8 +301,10 @@ void Game::select_piece_at(int x, int y) {
 void Game::confirm_move() {
     if (selected_piece_ && is_selecting_target_) {
         auto start_cell = selected_piece_->current_cell();
-        Command move_cmd(game_time_ms(), selected_piece_->id, "move", {start_cell, cursor_pos_}, 1);
-        enqueue_command(move_cmd);
+        if (is_move_valid(selected_piece_, start_cell, cursor_pos_)) {
+            Command move_cmd(game_time_ms(), selected_piece_->id, "move", {start_cell, cursor_pos_}, 1);
+            enqueue_command(move_cmd);
+        }
     }
     cancel_selection();
 }
@@ -348,6 +356,25 @@ void Game::capture_piece(PiecePtr captured, PiecePtr captor) {
 
 std::string Game::get_position_key(int x, int y) {
     return std::to_string(x) + "," + std::to_string(y);
+}
+
+bool Game::is_move_valid(PiecePtr piece, const std::pair<int,int>& from, const std::pair<int,int>& to) {
+    if (!piece || !piece->state || !piece->state->moves) {
+        return false;
+    }
+    
+    // Update position map to ensure accuracy
+    update_cell2piece_map();
+    
+    // Create set of occupied cells for path checking
+    std::unordered_set<std::pair<int,int>, PairHash> occupied_cells;
+    for (const auto& [cell, pieces_at_cell] : pos) {
+        if (!pieces_at_cell.empty()) {
+            occupied_cells.insert(cell);
+        }
+    }
+    
+    return piece->state->moves->is_valid(from, to, occupied_cells);
 }
 
 Game create_game(const std::string& pieces_root, ImgFactoryPtr img_factory) {

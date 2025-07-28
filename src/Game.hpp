@@ -104,6 +104,7 @@ private:
     void check_captures();
     void capture_piece(PiecePtr captured, PiecePtr captor);
     std::string get_position_key(int x, int y);
+    bool is_move_valid(PiecePtr piece, const std::pair<int,int>& from, const std::pair<int,int>& to);
 };
 
 // Factory function to create game from pieces directory
