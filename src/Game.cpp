@@ -5,8 +5,14 @@
 Game::Game(std::vector<PiecePtr> pcs, Board board)
     : pieces(pcs), board(board) {
     validate();
-    for(const auto & p : pieces) piece_by_id[p->id] = p;
+    for(const auto & p : pieces) {
+        if (p) {
+            piece_by_id[p->id] = p;
+        }
+    }
     start_tp = std::chrono::steady_clock::now();
+    // Initialize position map
+    update_cell2piece_map();
 }
 
 int Game::game_time_ms() const {
@@ -159,8 +165,14 @@ void Game::update_cell2piece_map() {
     std::lock_guard<std::mutex> lock(positions_mutex_);
     pos.clear();
     for(const auto& p : pieces) {
-        auto cell = p->current_cell();
-        pos[cell].push_back(p);
+        if (p && p->state && p->state->physics) {
+            auto cell = p->current_cell();
+            // Validate cell coordinates
+            if (cell.first >= 0 && cell.first < board.W_cells && 
+                cell.second >= 0 && cell.second < board.H_cells) {
+                pos[cell].push_back(p);
+            }
+        }
     }
 }
 
@@ -172,6 +184,9 @@ void Game::process_input(const Command& cmd) {
     else if (cmd.type == "left") move_cursor(-1, 0);
     else if (cmd.type == "right") move_cursor(1, 0);
     else if (cmd.type == "select") {
+        // Update position map before accessing it
+        update_cell2piece_map();
+        
         // Enhanced selection logic from movement-logic branch
         if (selected_piece_ == nullptr) {
             // First press - pick up piece under cursor
@@ -186,13 +201,21 @@ void Game::process_input(const Command& cmd) {
             selected_piece_pos_ = {-1, -1};
         } else {
             // Different position - create move command
-            Command move_cmd(cmd.timestamp, selected_piece_->id, "move", {selected_piece_pos_, cursor_pos_});
-            
-            // Process the move command through state machine
-            auto piece_it = piece_by_id.find(move_cmd.piece_id);
-            if (piece_it != piece_by_id.end()) {
-                auto piece = piece_it->second;
-                piece->on_command(move_cmd, pos);
+            try {
+                Command move_cmd(cmd.timestamp, selected_piece_->id, "move", {selected_piece_pos_, cursor_pos_});
+                
+                // Process the move command through state machine
+                auto piece_it = piece_by_id.find(move_cmd.piece_id);
+                if (piece_it != piece_by_id.end()) {
+                    auto piece = piece_it->second;
+                    if (piece && piece->state) {
+                        // Update position map again before passing to piece
+                        update_cell2piece_map();
+                        piece->on_command(move_cmd, pos);
+                    }
+                }
+            } catch (const std::exception& e) {
+                // Handle move command errors silently
             }
             
             // Reset selection
@@ -300,10 +323,13 @@ void Game::check_captures() {
                     auto piece1 = pieces_at_cell[i];
                     auto piece2 = pieces_at_cell[j];
                     
-                    if (piece1->state->can_capture() && piece2->state->can_be_captured()) {
-                        capture_piece(piece2, piece1);
-                    } else if (piece2->state->can_capture() && piece1->state->can_be_captured()) {
-                        capture_piece(piece1, piece2);
+                    // Validate pieces before accessing their states
+                    if (piece1 && piece2 && piece1->state && piece2->state) {
+                        if (piece1->state->can_capture() && piece2->state->can_be_captured()) {
+                            capture_piece(piece2, piece1);
+                        } else if (piece2->state->can_capture() && piece1->state->can_be_captured()) {
+                            capture_piece(piece1, piece2);
+                        }
                     }
                 }
             }
@@ -312,8 +338,12 @@ void Game::check_captures() {
 }
 
 void Game::capture_piece(PiecePtr captured, PiecePtr captor) {
-    pieces.erase(std::remove(pieces.begin(), pieces.end(), captured), pieces.end());
-    piece_by_id.erase(captured->id);
+    if (captured && captor) {
+        pieces.erase(std::remove(pieces.begin(), pieces.end(), captured), pieces.end());
+        piece_by_id.erase(captured->id);
+        // Update position map after capture
+        update_cell2piece_map();
+    }
 }
 
 std::string Game::get_position_key(int x, int y) {
