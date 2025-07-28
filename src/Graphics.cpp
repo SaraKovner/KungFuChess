@@ -1,4 +1,4 @@
-#include "Graphics.hpp"
+#include "../headers/Graphics.hpp"
 
 #include <algorithm>
 #include <chrono>

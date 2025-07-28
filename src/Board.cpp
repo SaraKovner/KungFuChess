@@ -1,4 +1,4 @@
-#include "Board.hpp"
+#include "../headers/Board.hpp"
 
 #include <cmath>    // std::round
 #include <iostream> // std::cout

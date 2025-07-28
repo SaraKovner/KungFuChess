@@ -1,4 +1,4 @@
-#include "Game.hpp"
+#include "../headers/Game.hpp"
 #include <opencv2/opencv.hpp>
 
 // ---------------- Implementation --------------------
