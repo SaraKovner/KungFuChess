@@ -21,7 +21,10 @@ public:
             return std::make_shared<IdlePhysics>(board);
         }
         if(key == "move") {
-            double speed = cfg.is_null() ? 1.0 : cfg.value("speed_m_per_sec", 1.0);
+            double speed = 2.0; // Default speed
+            if (!cfg.is_null() && cfg.contains("speed_m_per_sec")) {
+                speed = cfg["speed_m_per_sec"];
+            }
             return std::make_shared<MovePhysics>(board, speed);
         }
         if(key == "jump") {

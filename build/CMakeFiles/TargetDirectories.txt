@@ -1,0 +1,4 @@
+C:/Users/This User/Documents/הנדסאות/CTD/איטרציה 2/CTD_Sara/KungFuChess/build/CMakeFiles/kungfu_chess_lib.dir
+C:/Users/This User/Documents/הנדסאות/CTD/איטרציה 2/CTD_Sara/KungFuChess/build/CMakeFiles/KungFuChess.dir
+C:/Users/This User/Documents/הנדסאות/CTD/איטרציה 2/CTD_Sara/KungFuChess/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/This User/Documents/הנדסאות/CTD/איטרציה 2/CTD_Sara/KungFuChess/build/CMakeFiles/ZERO_CHECK.dir

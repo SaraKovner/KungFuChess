@@ -86,17 +86,26 @@ public:
         
         start_cell = cmd.params[0];
         end_cell   = cmd.params[1];
+        curr_pos_m = {static_cast<double>(start_cell.second), static_cast<double>(start_cell.first)};
         start_ms   = cmd.timestamp;
 
-        std::pair<double,double> start_pos = board.cell_to_m(start_cell);
-        std::pair<double,double> end_pos   = board.cell_to_m(end_cell);
+        std::pair<double,double> start_pos = {static_cast<double>(start_cell.second), static_cast<double>(start_cell.first)};
+        std::pair<double,double> end_pos = {static_cast<double>(end_cell.second), static_cast<double>(end_cell.first)};
         movement_vec = { end_pos.first - start_pos.first, end_pos.second - start_pos.second };
         movement_len = std::hypot(movement_vec.first, movement_vec.second);
-        double speed_m_s = param; // 1 cell == 1m with default cell_size_m
-        duration_s = movement_len / speed_m_s;
         
-        // Set current position to actual start position (not default 0,0)
-        curr_pos_m = start_pos;
+        // Ensure we have a valid speed
+        double speed_m_s = (param > 0.0) ? param : 0.5; // Default to 0.5 if invalid
+        
+        // Avoid division by zero
+        if (movement_len > 0.0 && speed_m_s > 0.0) {
+            duration_s = movement_len / speed_m_s;
+        } else {
+            duration_s = 0.1; // Minimum duration
+        }
+        
+        std::cout << "MOVE: (" << start_cell.first << "," << start_cell.second 
+                  << ") -> (" << end_cell.first << "," << end_cell.second << ") duration: " << duration_s << "s" << std::endl;
     }
 
     std::shared_ptr<Command> update(int now_ms) override {
