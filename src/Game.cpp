@@ -105,11 +105,14 @@ void Game::run_game_loop(int num_iterations, bool is_with_graphics) {
 
                     // Use physics position for moving pieces, cell position for static pieces
                     std::pair<int, int> pos_pix;
-                    if (piece->state->name == "move") {
-                        pos_pix = piece->state->physics->get_pos_pix();
-                        // Debug: print position during movement
+                    if (piece->state->name == "move" || piece->state->name == "jump") {
                         auto pos_m = piece->state->physics->get_pos_m();
-                        std::cout << "Moving piece at: (" << pos_m.first << ", " << pos_m.second << ") -> pix: (" << pos_pix.first << ", " << pos_pix.second << ")" << std::endl;
+                        pos_pix = piece->state->physics->get_pos_pix();
+                        // Fallback: if position is (0,0), use cell position instead
+                        if (pos_m.first == 0.0 && pos_m.second == 0.0) {
+                            auto pos_m_fallback = display_board.cell_to_m(cell);
+                            pos_pix = display_board.m_to_pix(pos_m_fallback);
+                        }
                     } else {
                         auto pos_m = display_board.cell_to_m(cell);
                         pos_pix = display_board.m_to_pix(pos_m);
@@ -353,8 +356,18 @@ void Game::check_captures() {
                     // Validate pieces before accessing their states
                     if (piece1 && piece2 && piece1->state && piece2->state) {
                         if (piece1->state->can_capture() && piece2->state->can_be_captured()) {
+                            // Skip capture if knight is not at its target destination
+                            if (piece1->id.size() > 0 && piece1->id[0] == 'N' && 
+                                piece1->state->physics->end_cell != cell) {
+                                continue; // Knight doesn't capture unless at target
+                            }
                             capture_piece(piece2, piece1);
                         } else if (piece2->state->can_capture() && piece1->state->can_be_captured()) {
+                            // Skip capture if knight is not at its target destination
+                            if (piece2->id.size() > 0 && piece2->id[0] == 'N' && 
+                                piece2->state->physics->end_cell != cell) {
+                                continue; // Knight doesn't capture unless at target
+                            }
                             capture_piece(piece1, piece2);
                         }
                     }
@@ -382,8 +395,44 @@ bool Game::is_move_valid(PiecePtr piece, const std::pair<int,int>& from, const s
         return false;
     }
     
+    // Check if piece can move (not in rest state)
+    if (piece->state->name == "long_rest" || piece->state->name == "short_rest") {
+        return false;
+    }
+    
+    // Check if piece is currently moving
+    if (piece->state->name == "move" || piece->state->name == "jump") {
+        return false;
+    }
+    
+    // Check bounds
+    if (to.first < 0 || to.first >= board.H_cells || 
+        to.second < 0 || to.second >= board.W_cells) {
+        return false;
+    }
+    
+    // Check if trying to move to same position
+    if (from == to) {
+        return false;
+    }
+    
+    // Verify piece is actually at the 'from' position
+    auto current_cell = piece->current_cell();
+    if (current_cell != from) {
+        return false;
+    }
+    
     // Update position map to ensure accuracy
     update_cell2piece_map();
+    
+    // Check if destination has piece of same color
+    auto dest_it = pos.find(to);
+    if (dest_it != pos.end() && !dest_it->second.empty()) {
+        auto dest_piece = dest_it->second[0];
+        if (are_same_color(piece, dest_piece)) {
+            return false;
+        }
+    }
     
     // Create set of occupied cells for path checking
     std::unordered_set<std::pair<int,int>, PairHash> occupied_cells;
@@ -394,6 +443,23 @@ bool Game::is_move_valid(PiecePtr piece, const std::pair<int,int>& from, const s
     }
     
     return piece->state->moves->is_valid(from, to, occupied_cells);
+}
+
+char Game::get_piece_color(PiecePtr piece) {
+    if (!piece || piece->id.size() < 2) {
+        return '?';
+    }
+    // Color is the second character (after piece type): PW, PB, RW, etc.
+    return piece->id[1]; // Second character is color (W/B)
+}
+
+bool Game::are_same_color(PiecePtr piece1, PiecePtr piece2) {
+    if (!piece1 || !piece2) {
+        return false;
+    }
+    char color1 = get_piece_color(piece1);
+    char color2 = get_piece_color(piece2);
+    return (color1 == color2);
 }
 
 Game create_game(const std::string& pieces_root, ImgFactoryPtr img_factory) {

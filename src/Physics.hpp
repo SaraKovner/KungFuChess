@@ -67,7 +67,6 @@ public:
     void reset(const Command& cmd) override {
         start_cell = cmd.params[0];
         end_cell   = cmd.params[1];
-        curr_pos_m = board.cell_to_m(start_cell);
         start_ms   = cmd.timestamp;
 
         std::pair<double,double> start_pos = board.cell_to_m(start_cell);
@@ -76,6 +75,9 @@ public:
         movement_len = std::hypot(movement_vec.first, movement_vec.second);
         double speed_m_s = param; // 1 cell == 1m with default cell_size_m
         duration_s = movement_len / speed_m_s;
+        
+        // Set current position to actual start position (not default 0,0)
+        curr_pos_m = start_pos;
     }
 
     std::shared_ptr<Command> update(int now_ms) override {

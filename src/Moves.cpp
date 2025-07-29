@@ -81,7 +81,15 @@ bool Moves::is_valid(const std::pair<int,int>& src_cell,
     int dc = dst_cell.second - src_cell.second;
     bool dst_has_piece = cell_with_piece.count(dst_cell) > 0;
     if(!is_dst_cell_valid(dr, dc, dst_has_piece)) return false;
-    if(!path_is_clear(src_cell, dst_cell, cell_with_piece)) return false;
+    
+    // Skip path checking for knight moves (L-shape) - knights can jump over pieces
+    bool is_knight_move = (std::abs(dr) == 2 && std::abs(dc) == 1) || 
+                         (std::abs(dr) == 1 && std::abs(dc) == 2);
+    
+    if (!is_knight_move && !path_is_clear(src_cell, dst_cell, cell_with_piece)) {
+        return false;
+    }
+    
     // board bounds
     if(dst_cell.first < 0 || dst_cell.first >= H || dst_cell.second < 0 || dst_cell.second >= W) return false;
     return true;
