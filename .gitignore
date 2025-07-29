@@ -1,1 +1,24 @@
+# Build directories
+build/
+
+# External libraries
+external/
 OpenCV_451/
+
+# IDE files
+.vscode/
+.vs/
+*.vcxproj.user
+
+# Compiled files
+*.exe
+*.dll
+*.lib
+*.obj
+*.pdb
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
