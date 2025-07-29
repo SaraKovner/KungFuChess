@@ -81,6 +81,10 @@ public:
         piece->state->physics->end_cell = cell;
         piece->state->physics->curr_pos_m = board.cell_to_m(cell);
         
+        // Initialize with a proper idle command to ensure state is set correctly
+        Command init_cmd{0, id, "idle", {cell}};
+        piece->state->reset(init_cmd);
+        
         return piece;
     }
 
