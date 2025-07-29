@@ -2,6 +2,7 @@
 #include "CaptureRules.hpp"
 #include <opencv2/opencv.hpp>
 #include <set>
+#include <cstdio>
 #include "Physics.hpp"
 #include "../observer/headers/MoveEvent.hpp"
 #include "../observer/headers/CaptureEvent.hpp"
@@ -55,6 +56,58 @@ void Game::run(int num_iterations, bool is_with_graphics) {
     eventManager_.publishGameState(startEvent);
     currentGameState_ = GameState::Playing;
     
+    // Handle game state change for message display
+    onGameStateChanged(startEvent);
+    
+    // הצגת הודעת פתיחה למשך 3 שניות לפני תחילת המשחק
+    if (is_with_graphics) {
+        int opening_start = game_time_ms();
+        while (game_time_ms() - opening_start < 3000) { // 3 שניות
+            // Update message display
+            updateMessageDisplay();
+            
+            // Display opening message
+            if (background_img_) {
+                auto display_img = background_img_->clone();
+                drawGameInterface(display_img);
+                
+                // Draw board in center
+                Board display_board = board.clone();
+                int board_x_offset = (1280 - 640) / 2;
+                int board_y_offset = (960 - 640) / 2;
+                display_board.img->draw_on(*display_img, board_x_offset, board_y_offset);
+                
+                // Draw all pieces in starting positions
+                for(const auto& piece : pieces) {
+                    if (piece && piece->state && piece->state->graphics) {
+                        piece->state->graphics->update(game_time_ms());
+                        auto piece_img = piece->state->graphics->get_img();
+                        if (piece_img) {
+                            auto cell = piece->current_cell();
+                            auto pos_m = display_board.cell_to_m(cell);
+                            auto pos_pix = display_board.m_to_pix(pos_m);
+                            pos_pix.first += board_x_offset;
+                            pos_pix.second += board_y_offset;
+                            piece_img->draw_on(*display_img, pos_pix.first, pos_pix.second);
+                        }
+                    }
+                }
+                
+                // Draw message AFTER board and pieces (so it appears on top)
+                drawMessage(display_img);
+                
+                display_img->show();
+            }
+            
+            // Check for ESC to abort
+            int key = cv::waitKeyEx(30);
+            if (key == 27) { // ESC
+                running_ = false;
+                return;
+            }
+        }
+    }
+    
     start_user_input_thread();
     int start_ms = game_time_ms();
     // Don't call reset - it breaks piece positions
@@ -63,6 +116,54 @@ void Game::run(int num_iterations, bool is_with_graphics) {
     run_game_loop(num_iterations, is_with_graphics);
 
     announce_win();
+    
+    // הצגת הודעת סיום למשך 2 שניות לפני סגירת החלון
+    if (is_with_graphics && is_win()) {
+        int ending_start = game_time_ms();
+        while (game_time_ms() - ending_start < 2000) { // 2 שניות
+            // Update message display
+            updateMessageDisplay();
+            
+            // Display ending message with final board state
+            if (background_img_) {
+                auto display_img = background_img_->clone();
+                drawGameInterface(display_img);
+                
+                // Draw board in center
+                Board display_board = board.clone();
+                int board_x_offset = (1280 - 640) / 2;
+                int board_y_offset = (960 - 640) / 2;
+                display_board.img->draw_on(*display_img, board_x_offset, board_y_offset);
+                
+                // Draw remaining pieces in final positions
+                for(const auto& piece : pieces) {
+                    if (piece && piece->state && piece->state->graphics) {
+                        piece->state->graphics->update(game_time_ms());
+                        auto piece_img = piece->state->graphics->get_img();
+                        if (piece_img) {
+                            auto cell = piece->current_cell();
+                            auto pos_m = display_board.cell_to_m(cell);
+                            auto pos_pix = display_board.m_to_pix(pos_m);
+                            pos_pix.first += board_x_offset;
+                            pos_pix.second += board_y_offset;
+                            piece_img->draw_on(*display_img, pos_pix.first, pos_pix.second);
+                        }
+                    }
+                }
+                
+                // Draw message AFTER board and pieces (so it appears on top)
+                drawMessage(display_img);
+                
+                display_img->show();
+            }
+            
+            // Allow user to press ESC to close early
+            int key = cv::waitKeyEx(30);
+            if (key == 27) { // ESC
+                break;
+            }
+        }
+    }
     
     // Close OpenCV windows if graphics were used
     if(is_with_graphics) {
@@ -91,6 +192,9 @@ void Game::run_game_loop(int num_iterations, bool is_with_graphics) {
     while(!is_win() && running_) {
         now = game_time_ms();
         
+        // Update message display timing
+        updateMessageDisplay();
+        
         // Update all pieces
         for(auto & p : pieces) {
             p->update(now);
@@ -110,9 +214,9 @@ void Game::run_game_loop(int num_iterations, bool is_with_graphics) {
                 display_img = background_img_->clone();
                 drawGameInterface(display_img);
                 
-                // Calculate board position on background (centered)
-                int board_x_offset = (1024 - 640) / 2;
-                int board_y_offset = (768 - 640) / 2;
+                // Calculate board position on background (centered) - עדכנתי לגודל החדש
+                int board_x_offset = (1280 - 640) / 2;  // 320 instead of 192
+                int board_y_offset = (960 - 640) / 2;   // 160 instead of 64
                 
                 // Draw board on background
                 display_board.img->draw_on(*display_img, board_x_offset, board_y_offset);
@@ -413,6 +517,9 @@ void Game::announce_win() {
         GameStateEvent winEvent(winState, currentGameState_, reason, game_time_ms());
         eventManager_.publishGameState(winEvent);
         currentGameState_ = winState;
+        
+        // Handle game state change for message display
+        onGameStateChanged(winEvent);
     }
 }
 
@@ -558,18 +665,24 @@ void Game::capture_piece(PiecePtr captured, PiecePtr captor) {
         bool capturerIsWhite = (captor->id.length() >= 2 && captor->id[1] == 'W');
         auto capturedCell = captured->current_cell();
         
+        // הסרתי את הודעת התפיסה על המסך - רק הודעות תחילה וסיום
+        
         // חישוב ערך הכלי שנתפס
         int pieceValue = 1; // ערך בסיסי
+        
         if (captured->id.length() >= 1) {
             char pieceType = captured->id[0];
+            
             switch(pieceType) {
-                case 'P': pieceValue = 1; break;  // רגלי
-                case 'R': pieceValue = 5; break;  // צריח
-                case 'N': pieceValue = 3; break;  // סוס
-                case 'B': pieceValue = 3; break;  // רץ
-                case 'Q': pieceValue = 9; break;  // מלכה
-                case 'K': pieceValue = 100; break; // מלך
-                default: pieceValue = 1;
+                case 'P': pieceValue = 1; break;  // Pawn
+                case 'R': pieceValue = 5; break;  // Rook
+                case 'N': pieceValue = 3; break;  // Knight
+                case 'B': pieceValue = 3; break;  // Bishop
+                case 'Q': pieceValue = 9; break;  // Queen
+                case 'K': pieceValue = 100; break; // King
+                default: 
+                    pieceValue = 1; // Default value
+                    break;
             }
         }
         
@@ -724,7 +837,9 @@ std::string Game::cellToChessNotation(int x, int y) {
 }
 
 void Game::drawGameInterface(ImgPtr background_img) {
-    if (!background_img) return;
+    if (!background_img) {
+        return;
+    }
     
     // Get moves from trackers
     const auto& whiteMoves = whiteMovesTracker_.getAllMoves();
@@ -734,9 +849,9 @@ void Game::drawGameInterface(ImgPtr background_img) {
     int whiteScore = whiteScoreTracker_.getScore();
     int blackScore = blackScoreTracker_.getScore();
     
-    // Background dimensions (assuming 1024x768 or similar)
-    int bg_width = 1024;
-    int bg_height = 768;
+    // Background dimensions - עדכנתי לגודל הגדול יותר
+    int bg_width = 1280;
+    int bg_height = 960;
     
     // Board will be in center (640x640)
     int board_x = (bg_width - 640) / 2;  // Center horizontally
@@ -754,28 +869,109 @@ void Game::drawGameInterface(ImgPtr background_img) {
     drawMovesTable(background_img, white_table_x, white_table_y, whiteMoves, "White Moves", true);
     drawMovesTable(background_img, black_table_x, black_table_y, blackMoves, "Black Moves", false);
     
-    // Draw scores below tables
-    drawScore(background_img, white_table_x, white_table_y + 400, whiteScore, "White Score", true);
-    drawScore(background_img, black_table_x, black_table_y + 400, blackScore, "Black Score", false);
+    // Draw scores above tables instead of below
+    drawScore(background_img, white_table_x, white_table_y - 40, whiteScore, "White Score", true);
+    drawScore(background_img, black_table_x, black_table_y - 40, blackScore, "Black Score", false);
+    
+    // NOTE: drawMessage is called AFTER everything else to ensure it appears on top
 }
 
 void Game::drawMovesTable(ImgPtr img, int x, int y, const std::vector<MoveEvent>& moves, const std::string& title, bool isWhite) {
     if (!img) return;
     
-    // Draw title - using put_text instead of cv::putText
-    img->put_text(title, x, y - 10, 0.8);
+    // Table dimensions - 20 שורות קבועות
+    int table_width = 170;
+    int header_height = 30;
+    int row_height = 22;
+    int maxRows = 20;  // תמיד 20 שורות
+    int table_height = header_height + (maxRows * row_height);
     
-    // Draw moves (latest 15 moves)
-    int maxMoves = std::min(15, static_cast<int>(moves.size()));
-    int startIdx = std::max(0, static_cast<int>(moves.size()) - maxMoves);
+    // Column widths
+    int time_col_width = 75;
+    int move_col_width = 95;
     
-    for (int i = 0; i < maxMoves; ++i) {
-        const auto& move = moves[startIdx + i];
-        std::string moveText = std::to_string(startIdx + i + 1) + ". " + 
-                              move.piece + " " + move.from + "->" + move.to;
+    // Colors (RGB) - צבעים נכונים
+    std::vector<uint8_t> white_bg = {255, 255, 255};      // White background
+    std::vector<uint8_t> header_bg = {220, 220, 220};     // Light gray header
+    std::vector<uint8_t> alt_row_bg = {245, 245, 245};    // Light gray for alternating rows
+    std::vector<uint8_t> border_color = {0, 0, 0};        // Black borders
+    std::vector<uint8_t> text_color = {0, 0, 0};          // Black text
+    
+    // Draw title above table
+    img->put_text(title, x, y - 15, 0.7);
+    
+    // Draw main table background - רקע לבן אמיתי
+    img->draw_rect(x, y, table_width, table_height, white_bg);
+    
+    // Draw header background
+    img->draw_rect(x, y, table_width, header_height, header_bg);
+    
+    // Draw header text
+    img->put_text("Time", x + 8, y + 20, 0.5);
+    img->put_text("Move", x + time_col_width + 8, y + 20, 0.5);
+    
+    // Draw table borders - גבולות דקים ויפים
+    img->draw_rect(x, y, table_width, 1, border_color);                    // Top border - דק
+    img->draw_rect(x, y + header_height, table_width, 1, border_color);    // Header bottom - דק
+    img->draw_rect(x, y, 1, table_height, border_color);                   // Left border - דק
+    img->draw_rect(x + table_width - 1, y, 1, table_height, border_color); // Right border - דק
+    img->draw_rect(x + time_col_width, y, 1, table_height, border_color);  // Column separator - דק
+    
+    // Draw moves - תמיד 20 שורות, רק עם התזוזות האחרונות
+    int totalMoves = static_cast<int>(moves.size());
+    int startIdx = std::max(0, totalMoves - maxRows);  // התחל מ-20 האחרונות
+    
+    for (int i = 0; i < maxRows; ++i) {
+        int row_y = y + header_height + (i * row_height);
         
-        img->put_text(moveText, x, y + 30 + i * 25, 0.5);
+        // Draw alternating row background for all rows
+        if (i % 2 == 1) {
+            img->draw_rect(x + 1, row_y, table_width - 2, row_height, alt_row_bg);
+        }
+        // אחרת השורה תישאר לבנה (הרקע הלבן של הטבלה)
+        
+        // Draw horizontal row separator - דק
+        if (i > 0) {
+            img->draw_rect(x, row_y, table_width, 1, border_color);
+        }
+        
+        // Draw content only if we have a move for this row
+        if (startIdx + i < totalMoves) {
+            const auto& move = moves[startIdx + i];
+            
+            // Format timestamp as MM:SS.mmm
+            double timeSeconds = move.timestamp / 1000.0;
+            int minutes = static_cast<int>(timeSeconds) / 60;
+            int seconds = static_cast<int>(timeSeconds) % 60;
+            int milliseconds = static_cast<int>((timeSeconds - static_cast<int>(timeSeconds)) * 1000);
+            
+            char timeStr[32];
+            sprintf(timeStr, "%02d:%02d.%03d", minutes, seconds, milliseconds);
+            
+            // Extract piece notation in standard chess format
+            std::string moveNotation;
+            if (move.piece.length() >= 1) {
+                char pieceType = move.piece[0];
+                if (pieceType == 'P') {
+                    // For pawns: just show destination (e.g., "e4")
+                    moveNotation = move.to;
+                } else {
+                    // For other pieces: show piece type + destination (e.g., "Nf3", "Qd4")
+                    moveNotation = std::string(1, pieceType) + move.to;
+                }
+            } else {
+                // Fallback: show from->to format
+                moveNotation = move.from + "->" + move.to;
+            }
+            
+            // Draw text in cells
+            img->put_text(timeStr, x + 6, row_y + 16, 0.4);
+            img->put_text(moveNotation, x + time_col_width + 6, row_y + 16, 0.4);
+        }
     }
+    
+    // Draw bottom border - דק ויפה
+    img->draw_rect(x, y + table_height - 1, table_width, 1, border_color);
 }
 
 void Game::drawScore(ImgPtr img, int x, int y, int score, const std::string& player, bool isWhite) {
@@ -787,7 +983,7 @@ void Game::drawScore(ImgPtr img, int x, int y, int score, const std::string& pla
 
 ImgPtr Game::loadBackgroundImage(const std::string& pieces_root, ImgFactoryPtr img_factory) {
     std::string bg_path = pieces_root + "background.jpg";
-    return img_factory->load(bg_path, {1024, 768}); // Standard game interface size
+    return img_factory->load(bg_path, {1280, 960}); // Updated size for larger interface
 }
 
 Game create_game(const std::string& pieces_root, ImgFactoryPtr img_factory) {
@@ -800,7 +996,7 @@ Game create_game(const std::string& pieces_root, ImgFactoryPtr img_factory) {
     
     // Load background image
     std::string bg_img_path = pieces_root + "background.jpg";
-    auto background_img = img_factory->load(bg_img_path, {1024, 768});
+    auto background_img = img_factory->load(bg_img_path, {1280, 960});
     
     // Create board (8x8 chess board)
     Board board(80, 80, 8, 8, board_img);
@@ -821,5 +1017,74 @@ Game create_game(const std::string& pieces_root, ImgFactoryPtr img_factory) {
     } else {
         std::cout << "Warning: Background image not found, using board-only display" << std::endl;
         return Game(pieces, board);
+    }
+}
+
+void Game::showMessage(const std::string& message, int duration) {
+    currentMessage_ = message;
+    messageStartTime_ = game_time_ms();
+    messageDuration_ = duration;
+    showMessage_ = true;
+    std::cout << "Game Message: " << message << std::endl;
+}
+
+void Game::drawMessage(ImgPtr img) {
+    if (!img || !showMessage_) {
+        return;
+    }
+    
+    // Center of screen for message display
+    int bg_width = 1280;
+    int bg_height = 960;
+    
+    // Position message in CENTER of screen (over the board)
+    int text_x = bg_width / 2 - (currentMessage_.length() * 8); // Smaller font adjustment
+    int text_y = bg_height / 2; // Center vertically
+    
+    // Draw text multiple times with slight offsets to create bold/thick effect
+    // Using smaller offsets and smaller font for better visibility
+    for (int dx = -1; dx <= 1; dx++) {
+        for (int dy = -1; dy <= 1; dy++) {
+            img->put_text(currentMessage_, text_x + dx, text_y + dy, 1.5);  // גופן קטן יותר שיכנס במסך
+        }
+    }
+}
+
+void Game::updateMessageDisplay() {
+    if (showMessage_ && messageStartTime_ != -1) {
+        int currentTime = game_time_ms();
+        if (currentTime - messageStartTime_ >= messageDuration_) {
+            showMessage_ = false;
+            messageStartTime_ = -1;
+            currentMessage_.clear();
+        }
+    }
+}
+
+void Game::onGameStateChanged(const GameStateEvent& event) {
+    switch (event.newState) {
+        case GameState::Playing:
+            if (event.previousState == GameState::Paused) {
+                showMessage("Game Starting! Good luck!", 5000);  // הגדלתי ל-5 שניות
+            }
+            break;
+        case GameState::WhiteWin:
+            showMessage("White Team Wins! Congratulations!", 2000);  // קיצרתי ל-2 שניות
+            break;
+        case GameState::BlackWin:
+            showMessage("Black Team Wins! Congratulations!", 2000);  // קיצרתי ל-2 שניות
+            break;
+        case GameState::Draw:
+            showMessage("It's a Draw! Great game!", 2000);  // קיצרתי ל-2 שניות
+            break;
+        case GameState::Paused:
+            showMessage("Game Paused", 3000);  // הגדלתי ל-3 שניות
+            break;
+    }
+    
+    if (!event.reason.empty()) {
+        // Add reason to current message if exists
+        std::string reasonMessage = currentMessage_ + " - " + event.reason;
+        showMessage(reasonMessage, messageDuration_);
     }
 }

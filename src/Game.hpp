@@ -109,6 +109,12 @@ private:
     // Game state tracking
     GameState currentGameState_ = GameState::Paused;
     
+    // Message display system
+    std::string currentMessage_;
+    int messageStartTime_ = -1;
+    int messageDuration_ = 3000; // 3 seconds in milliseconds
+    bool showMessage_ = false;
+    
     // Event management for observer pattern
     GameEventManager eventManager_;
     
@@ -141,7 +147,17 @@ private:
     void drawGameInterface(ImgPtr background_img);
     void drawMovesTable(ImgPtr img, int x, int y, const std::vector<MoveEvent>& moves, const std::string& title, bool isWhite);
     void drawScore(ImgPtr img, int x, int y, int score, const std::string& player, bool isWhite);
-    ImgPtr loadBackgroundImage(const std::string& pieces_root, ImgFactoryPtr img_factory);
+    
+    // Message display functions
+    void showMessage(const std::string& message, int duration = 3000);
+    void drawMessage(ImgPtr img);
+    void updateMessageDisplay();
+    
+    // Game state event handler
+    void onGameStateChanged(const GameStateEvent& event);
+    
+    // Static functions
+    static ImgPtr loadBackgroundImage(const std::string& pieces_root, ImgFactoryPtr img_factory);
 };
 
 // Factory function to create game from pieces directory

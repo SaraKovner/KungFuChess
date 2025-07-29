@@ -78,7 +78,7 @@ void OpenCvImg::draw_on(Img& dst, int x, int y) {
 
 void OpenCvImg::put_text(const std::string& txt, int x, int y, double font_size) {
 	if (impl->mat.empty()) return;
-	cv::putText(impl->mat, txt, cv::Point(x, y), cv::FONT_HERSHEY_SIMPLEX, font_size, cv::Scalar(255, 255, 255, 255));
+	cv::putText(impl->mat, txt, cv::Point(x, y), cv::FONT_HERSHEY_SIMPLEX, font_size, cv::Scalar(0, 0, 255, 255));
 }
 
 void OpenCvImg::show() const {
