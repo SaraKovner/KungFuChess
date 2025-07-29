@@ -356,7 +356,17 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="C:\Users\sksk1\Documents\לימודים\BootCamp\CTD\CTD25_Solutions\KCF\KungFuChess\tests\debug_test.cpp" />
+    <ClCompile Include="C:\Users\sksk1\Documents\לימודים\BootCamp\CTD\CTD25_Solutions\KCF\KungFuChess\tests\test_board.cpp" />
+    <ClCompile Include="C:\Users\sksk1\Documents\לימודים\BootCamp\CTD\CTD25_Solutions\KCF\KungFuChess\tests\test_capture_rules.cpp" />
+    <ClCompile Include="C:\Users\sksk1\Documents\לימודים\BootCamp\CTD\CTD25_Solutions\KCF\KungFuChess\tests\test_command.cpp" />
+    <ClCompile Include="C:\Users\sksk1\Documents\לימודים\BootCamp\CTD\CTD25_Solutions\KCF\KungFuChess\tests\test_factories.cpp" />
+    <ClCompile Include="C:\Users\sksk1\Documents\לימודים\BootCamp\CTD\CTD25_Solutions\KCF\KungFuChess\tests\test_game.cpp" />
+    <ClCompile Include="C:\Users\sksk1\Documents\לימודים\BootCamp\CTD\CTD25_Solutions\KCF\KungFuChess\tests\test_graphics.cpp" />
+    <ClCompile Include="C:\Users\sksk1\Documents\לימודים\BootCamp\CTD\CTD25_Solutions\KCF\KungFuChess\tests\test_main.cpp" />
+    <ClCompile Include="C:\Users\sksk1\Documents\לימודים\BootCamp\CTD\CTD25_Solutions\KCF\KungFuChess\tests\test_moves.cpp" />
+    <ClCompile Include="C:\Users\sksk1\Documents\לימודים\BootCamp\CTD\CTD25_Solutions\KCF\KungFuChess\tests\test_physics.cpp" />
+    <ClCompile Include="C:\Users\sksk1\Documents\לימודים\BootCamp\CTD\CTD25_Solutions\KCF\KungFuChess\tests\test_piece.cpp" />
+    <ClCompile Include="C:\Users\sksk1\Documents\לימודים\BootCamp\CTD\CTD25_Solutions\KCF\KungFuChess\tests\test_state.cpp" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
