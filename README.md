@@ -1,4 +1,4 @@
-# KFC Merged - Kung Fu Chess Game
+# Kung Fu Chess Game
 
 פרויקט משחק שחמט מתקדם עם מערכת State machines, גרפיקה מבוססת OpenCV ותמיכה במקביליות.
 
