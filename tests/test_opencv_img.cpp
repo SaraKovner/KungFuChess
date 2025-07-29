@@ -4,29 +4,37 @@
 TEST_CASE("OpenCvImg - Construction") {
     SECTION("Construction with valid size") {
         REQUIRE_NOTHROW([&]() {
-            OpenCvImg img({400, 300});
+            OpenCvImg img;
+            img.create_blank(400, 300);
         }());
     }
     
     SECTION("Construction with different sizes") {
         REQUIRE_NOTHROW([&]() {
-            OpenCvImg small({50, 50});
-            OpenCvImg medium({800, 600});
-            OpenCvImg large({1920, 1080});
+            OpenCvImg small;
+            small.create_blank(50, 50);
+            OpenCvImg medium;
+            medium.create_blank(800, 600);
+            OpenCvImg large;
+            large.create_blank(1920, 1080);
         }());
     }
     
     SECTION("Construction with edge case sizes") {
         REQUIRE_NOTHROW([&]() {
-            OpenCvImg tiny({1, 1});
-            OpenCvImg wide({2000, 100});
-            OpenCvImg tall({100, 2000});
+            OpenCvImg tiny;
+            tiny.create_blank(1, 1);
+            OpenCvImg wide;
+            wide.create_blank(2000, 100);
+            OpenCvImg tall;
+            tall.create_blank(100, 2000);
         }());
     }
 }
 
 TEST_CASE("OpenCvImg - Drawing Operations") {
-    OpenCvImg img({400, 300});
+    OpenCvImg img;
+    img.create_blank(400, 300);
     
     SECTION("Draw rectangles") {
         REQUIRE_NOTHROW([&]() {
@@ -54,7 +62,8 @@ TEST_CASE("OpenCvImg - Drawing Operations") {
 }
 
 TEST_CASE("OpenCvImg - Text Operations") {
-    OpenCvImg img({400, 300});
+    OpenCvImg img;
+    img.create_blank(400, 300);
     
     SECTION("Put text with different parameters") {
         REQUIRE_NOTHROW([&]() {
@@ -83,8 +92,10 @@ TEST_CASE("OpenCvImg - Text Operations") {
 }
 
 TEST_CASE("OpenCvImg - Image Operations") {
-    OpenCvImg img1({200, 200});
-    OpenCvImg img2({400, 400});
+    OpenCvImg img1;
+    img1.create_blank(200, 200);
+    OpenCvImg img2;
+    img2.create_blank(400, 400);
     
     SECTION("Draw on other images") {
         REQUIRE_NOTHROW([&]() {
@@ -115,7 +126,8 @@ TEST_CASE("OpenCvImg - Image Operations") {
 }
 
 TEST_CASE("OpenCvImg - Display Operations") {
-    OpenCvImg img({300, 300});
+    OpenCvImg img;
+    img.create_blank(300, 300);
     
     SECTION("Show image") {
         // Add some content to make it visible
@@ -128,7 +140,8 @@ TEST_CASE("OpenCvImg - Display Operations") {
     }
     
     SECTION("Show empty image") {
-        OpenCvImg empty({100, 100});
+        OpenCvImg empty;
+        empty.create_blank(100, 100);
         REQUIRE_NOTHROW([&]() {
             empty.show();
         }());
@@ -173,8 +186,10 @@ TEST_CASE("OpenCvImgFactory - Full Coverage") {
 TEST_CASE("OpenCvImg - Static Methods") {
     SECTION("Close all windows") {
         // Create and show some images
-        OpenCvImg img1({200, 200});
-        OpenCvImg img2({300, 300});
+        OpenCvImg img1;
+        img1.create_blank(200, 200);
+        OpenCvImg img2;
+        img2.create_blank(300, 300);
         
         img1.show();
         img2.show();

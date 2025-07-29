@@ -18,7 +18,7 @@ void SoundManager::onNotify(const CaptureEvent& event) {
 }
 
 void SoundManager::onNotify(const GameStateEvent& event) {
-    if (event.newState == GameState::WhiteWin || event.newState == GameState::BlackWin) {
+    if (event.newState == GameState::WhiteWin || event.newState == GameState::BlackWin || event.newState == GameState::Draw) {
         std::cout << "🎉 Playing victory sound!" << std::endl;
         playVictorySound();
     }

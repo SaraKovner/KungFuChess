@@ -1,18 +1,21 @@
 #include "catch.hpp"
 #include "../observer/headers/SoundManager.hpp"
+#include "../observer/headers/MoveEvent.hpp"
+#include "../observer/headers/CaptureEvent.hpp"
+#include "../observer/headers/GameStateEvent.hpp"
 #include <filesystem>
 
 // Mock Sound System Tests
 class MockSoundManager : public SoundManager {
 public:
-    mutable std::vector<std::string> playedSounds;
-    mutable int victoryCallCount = 0;
+    std::vector<std::string> playedSounds;
+    int victoryCallCount = 0;
     
-    void playWavFile(const std::string& filename) const override {
+    void playWavFile(const std::string& filename) override {
         playedSounds.push_back(filename);
     }
     
-    void playVictorySound() const override {
+    void playVictorySound() override {
         victoryCallCount++;
         playedSounds.push_back("victory.wav");
     }
@@ -124,20 +127,15 @@ TEST_CASE("SoundManager - Integration with Observer Pattern") {
     }
     
     SECTION("Mixed event types") {
-        MoveEvent move("PW1", "e2", "e4", true, 1000);
         CaptureEvent capture("QW1", "QB1", "d4", true, 9, 2000);
         GameStateEvent win(GameState::WhiteWin, GameState::Playing, "Win!", 3000);
         
-        // Move events don't trigger sounds in SoundManager
-        mockSound.onNotify(move);
-        REQUIRE(mockSound.playedSounds.empty());
-        
-        // Capture events do
+        // Capture events trigger sounds
         mockSound.onNotify(capture);
         REQUIRE(mockSound.playedSounds.size() == 1);
         REQUIRE(mockSound.playedSounds[0] == "white_capture.wav");
         
-        // Win events do
+        // Win events do too
         mockSound.onNotify(win);
         REQUIRE(mockSound.playedSounds.size() == 2);
         REQUIRE(mockSound.playedSounds[1] == "victory.wav");

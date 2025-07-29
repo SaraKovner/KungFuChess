@@ -16,7 +16,7 @@ int WhiteScoreTracker::getPieceValue(const std::string& piece) const {
 void WhiteScoreTracker::onNotify(const CaptureEvent& event) {
     // If white captured black piece - add points
     if (event.capturerIsWhite && !event.capturedPiece.empty()) {
-        int points = getPieceValue(event.capturedPiece);
+        int points = event.scoreValue;
         score_ += points;
         
         std::cout << "Trophy: White captured " << event.capturedPiece 
@@ -25,7 +25,7 @@ void WhiteScoreTracker::onNotify(const CaptureEvent& event) {
     }
     // If black captured white piece - subtract points
     else if (!event.capturerIsWhite && !event.capturingPiece.empty()) {
-        int points = getPieceValue(event.capturingPiece);
+        int points = event.scoreValue;
         score_ -= points;
         
         std::cout << "Loss: Black captured white piece at " << event.position 

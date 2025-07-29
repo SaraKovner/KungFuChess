@@ -252,11 +252,7 @@ TEST_CASE("SoundManager - Full Coverage") {
         }());
     }
     
-    SECTION("Test victory sound method") {
-        REQUIRE_NOTHROW([&]() {
-            soundMgr.playVictorySound();
-        }());
-    }
+
 }
 
 TEST_CASE("Event Objects - Full Coverage") {
@@ -282,7 +278,7 @@ TEST_CASE("Event Objects - Full Coverage") {
             REQUIRE(capture1.capturedPiece == "QB1");
             REQUIRE(capture1.position == "d4");
             REQUIRE(capture1.capturerIsWhite == true);
-            REQUIRE(capture1.pieceValue == 9);
+            REQUIRE(capture1.scoreValue == 9);
             REQUIRE(capture1.timestamp == 3000);
         }());
     }

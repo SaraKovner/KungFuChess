@@ -11,10 +11,12 @@ public:
     
     void onNotify(const CaptureEvent& event) override;
     void onNotify(const GameStateEvent& event) override;
+    
+    // Made public for testing
+    virtual void playVictorySound();
+    virtual void playWavFile(const std::string& filename);
 
 private:
-    void playVictorySound();
-    void playWavFile(const std::string& filename);
     
     std::string soundsPath_;
 };
