@@ -1,4 +1,6 @@
-C:/Users/This User/Documents/הנדסאות/CTD/איטרציה 2/CTD_Sara/KungFuChess/build/CMakeFiles/kungfu_chess_lib.dir
-C:/Users/This User/Documents/הנדסאות/CTD/איטרציה 2/CTD_Sara/KungFuChess/build/CMakeFiles/KungFuChess.dir
-C:/Users/This User/Documents/הנדסאות/CTD/איטרציה 2/CTD_Sara/KungFuChess/build/CMakeFiles/ALL_BUILD.dir
-C:/Users/This User/Documents/הנדסאות/CTD/איטרציה 2/CTD_Sara/KungFuChess/build/CMakeFiles/ZERO_CHECK.dir
+C:/Users/sksk1/Documents/לימודים/BootCamp/CTD/CTD25_Solutions/KCF/KungFuChess/build/CMakeFiles/kungfu_chess_lib.dir
+C:/Users/sksk1/Documents/לימודים/BootCamp/CTD/CTD25_Solutions/KCF/KungFuChess/build/CMakeFiles/KungFuChess.dir
+C:/Users/sksk1/Documents/לימודים/BootCamp/CTD/CTD25_Solutions/KCF/KungFuChess/build/CMakeFiles/kungfu_chess_tests.dir
+C:/Users/sksk1/Documents/לימודים/BootCamp/CTD/CTD25_Solutions/KCF/KungFuChess/build/CMakeFiles/RUN_TESTS.dir
+C:/Users/sksk1/Documents/לימודים/BootCamp/CTD/CTD25_Solutions/KCF/KungFuChess/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/sksk1/Documents/לימודים/BootCamp/CTD/CTD25_Solutions/KCF/KungFuChess/build/CMakeFiles/ZERO_CHECK.dir

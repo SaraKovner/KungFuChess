@@ -3,7 +3,7 @@
 #include <filesystem>
 
 SoundManager::SoundManager() {
-    soundsPath_ = "sounds/";
+    soundsPath_ = "../assets/sounds/";
 }
 
 void SoundManager::onNotify(const CaptureEvent& event) {

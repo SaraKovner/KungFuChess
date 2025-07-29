@@ -4,27 +4,45 @@
 - **KFC_CPP**: מבנה קוד מפותח, מערכת State machines, תמיכה ב-OpenCV
 - **CTD25_1**: תמיכה במקביליות, ממשק משתמש משופר
 
-## מבנה הפרויקט
+## מבנה הפרויקט המסודר
 
 ```
-KFC_Merged/
-├── src/                    # קבצי קוד מקור
-│   ├── img/               # מערכת תמונות
-│   ├── json/              # ספריית JSON
-│   ├── Game.hpp/cpp       # מנוע המשחק הראשי
-│   ├── Board.hpp/cpp      # לוח המשחק
-│   ├── Piece.hpp          # כלי המשחק
-│   ├── PieceFactory.hpp   # יצרן הכלים
-│   ├── State.hpp          # מצבי הכלים
-│   ├── Physics.hpp        # פיזיקת המשחק
-│   ├── Graphics.hpp/cpp   # גרפיקה ואנימציות
-│   └── main.cpp           # נקודת כניסה
-├── pieces/                # תיקיית הכלים והמצבים
-├── OpenCV_451/            # ספריית OpenCV
-├── CMakeLists.txt         # קובץ בנייה
-├── build.bat              # סקריפט בנייה
-├── run.bat                # סקריפט הרצה
-└── README.md              # מדריך זה
+KungFuChess/
+├── src/                           # קוד מקור ראשי
+│   ├── core/                      # מנוע המשחק הבסיסי
+│   │   ├── Game.hpp/cpp          # מנוע המשחק הראשי
+│   │   ├── Board.hpp/cpp         # לוח המשחק
+│   │   ├── Piece.hpp             # כלי המשחק
+│   │   ├── State.hpp             # מצבי הכלים
+│   │   ├── Physics.hpp           # פיזיקת המשחק
+│   │   └── Common.hpp            # הגדרות משותפות
+│   ├── graphics/                  # מערכת גרפיקה
+│   │   ├── Graphics.hpp/cpp      # גרפיקה ואנימציות
+│   │   ├── GraphicsFactory.hpp   # יצרן גרפיקה
+│   │   └── img/                  # מערכת תמונות
+│   ├── game_logic/               # לוגיקת המשחק
+│   │   ├── Moves.hpp/cpp         # מערכת תנועות
+│   │   ├── CaptureRules.hpp/cpp  # חוקי לכידה
+│   │   ├── PieceFactory.hpp      # יצרן הכלים
+│   │   └── PhysicsFactory.hpp    # יצרן פיזיקה
+│   ├── ui/                       # ממשק משתמש
+│   │   └── Command.hpp           # מערכת פקודות
+│   ├── observer/                 # מערכת Observer Pattern
+│   ├── utils/                    # כלי עזר
+│   │   └── json/                 # ספריית JSON
+│   └── main.cpp                  # נקודת כניסה
+├── assets/                       # נכסי המשחק
+│   ├── pieces/                   # כלי המשחק
+│   └── sounds/                   # קבצי שמע
+├── external/                     # ספריות חיצוניות
+│   └── OpenCV_451/              # ספריית OpenCV
+├── scripts/                      # סקריפטי בנייה והרצה
+│   ├── build.ps1
+│   └── run.ps1
+├── docs/                         # תיעוד
+├── tests/                        # בדיקות
+├── CMakeLists.txt               # קובץ בנייה ראשי
+└── .gitignore                   # Git ignore
 ```
 
 ## תכונות מרכזיות
@@ -62,13 +80,15 @@ KFC_Merged/
 
 ### בנייה:
 ```powershell
-# הרץ את סקריפט הבנייה
+# הרץ את סקריפט הבנייה מתיקיית scripts
+cd scripts
 .\build.ps1
 ```
 
 ### הרצה:
 ```powershell
-# הרץ את המשחק
+# הרץ את המשחק מתיקיית scripts
+cd scripts
 .\run.ps1
 ```
 
@@ -111,7 +131,7 @@ cmake --build . --config Release
 - הרץ כ-Administrator אם נדרש
 
 ### שגיאות הרצה:
-- ודא שתיקיית pieces/ קיימת
+- ודא שתיקיית assets/pieces/ קיימת
 - בדוק שקבצי DLL של OpenCV נמצאים בתיקיית ההרצה
 - הרץ מתיקיית הפרויקט הראשית
 

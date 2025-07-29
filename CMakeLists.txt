@@ -29,7 +29,7 @@ add_executable(${PROJECT_NAME} ${MAIN_SRC})
 target_link_libraries(${PROJECT_NAME} PRIVATE kungfu_chess_lib)
 
 # Set OpenCV paths
-set(OPENCV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/OpenCV_451")
+set(OPENCV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/OpenCV_451")
 set(OPENCV_INCLUDE_DIR "${OPENCV_DIR}/include")
 set(OPENCV_LIB_DIR "${OPENCV_DIR}/bin")
 
@@ -37,15 +37,23 @@ set(OPENCV_LIB_DIR "${OPENCV_DIR}/bin")
 target_include_directories(kungfu_chess_lib PRIVATE
     ${OPENCV_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/img
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/json
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/graphics
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/graphics/img
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/game_logic
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/json
     ${CMAKE_CURRENT_SOURCE_DIR}/observer/headers)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${OPENCV_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/img
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/json
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/graphics
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/graphics/img
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/game_logic
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/json
     ${CMAKE_CURRENT_SOURCE_DIR}/observer/headers)
 
 target_link_directories(kungfu_chess_lib PRIVATE ${OPENCV_LIB_DIR})
@@ -80,8 +88,13 @@ if(KFC_BUILD_TESTS)
         add_executable(kungfu_chess_tests ${TEST_SOURCES})
         target_include_directories(kungfu_chess_tests PRIVATE
             ${OPENCV_INCLUDE_DIR}
+            ${CMAKE_CURRENT_SOURCE_DIR}
             ${CMAKE_CURRENT_SOURCE_DIR}/src
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/json)
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/core
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/graphics
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/game_logic
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/json)
         target_link_libraries(kungfu_chess_tests PRIVATE kungfu_chess_lib)
 
         # Enable CTest integration

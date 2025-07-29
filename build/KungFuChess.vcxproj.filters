@@ -1,16 +1,16 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="C:\Users\This User\Documents\הנדסאות\CTD\איטרציה 2\CTD_Sara\KungFuChess\src\main.cpp">
+    <ClCompile Include="C:\Users\sksk1\Documents\לימודים\BootCamp\CTD\CTD25_Solutions\KCF\KungFuChess\src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\This User\Documents\הנדסאות\CTD\איטרציה 2\CTD_Sara\KungFuChess\CMakeLists.txt" />
+    <CustomBuild Include="C:\Users\sksk1\Documents\לימודים\BootCamp\CTD\CTD25_Solutions\KCF\KungFuChess\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Source Files">
-      <UniqueIdentifier>{45CF16D7-1133-33BD-A115-9834539B57F8}</UniqueIdentifier>
+      <UniqueIdentifier>{BBAC1B93-5BD4-3938-8085-22F4111BAE15}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
