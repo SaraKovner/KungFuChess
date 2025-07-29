@@ -478,8 +478,8 @@ void Game::process_input(const Command& cmd) {
 }
 
 void Game::move_cursor(int dx, int dy) {
-    cursor_pos_.first = std::max(0, std::min(board.W_cells - 1, cursor_pos_.first + dx));
-    cursor_pos_.second = std::max(0, std::min(board.H_cells - 1, cursor_pos_.second + dy));
+    cursor_pos_.first = (std::max)(0, (std::min)(board.W_cells - 1, cursor_pos_.first + dx));
+    cursor_pos_.second = (std::max)(0, (std::min)(board.H_cells - 1, cursor_pos_.second + dy));
 }
 
 void Game::resolve_collisions() {
@@ -823,9 +823,11 @@ void Game::setupEventListeners() {
     eventManager_.subscribeToCaptures(&whiteScoreTracker_);
     eventManager_.subscribeToCaptures(&blackScoreTracker_);
     eventManager_.subscribeToCaptures(&voiceAnnouncer_);
+    eventManager_.subscribeToCaptures(&soundManager_);
     
     // רישום מאזינים למצב המשחק
     eventManager_.subscribeToGameState(&voiceAnnouncer_);
+    eventManager_.subscribeToGameState(&soundManager_);
     
     std::cout << "Event listeners initialized successfully!" << std::endl;
 }
@@ -919,7 +921,7 @@ void Game::drawMovesTable(ImgPtr img, int x, int y, const std::vector<MoveEvent>
     
     // Draw moves - תמיד 20 שורות, רק עם התזוזות האחרונות
     int totalMoves = static_cast<int>(moves.size());
-    int startIdx = std::max(0, totalMoves - maxRows);  // התחל מ-20 האחרונות
+    int startIdx = (std::max)(0, totalMoves - maxRows);  // התחל מ-20 האחרונות
     
     for (int i = 0; i < maxRows; ++i) {
         int row_y = y + header_height + (i * row_height);

@@ -51,12 +51,13 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_directories(kungfu_chess_lib PRIVATE ${OPENCV_LIB_DIR})
 target_link_directories(${PROJECT_NAME} PRIVATE ${OPENCV_LIB_DIR})
 
-# Link OpenCV libraries
+# Link OpenCV and Windows multimedia libraries
 target_link_libraries(kungfu_chess_lib 
     $<$<CONFIG:Debug>:${OPENCV_LIB_DIR}/opencv_world451d.lib>
     $<$<CONFIG:Release>:${OPENCV_LIB_DIR}/opencv_world451.lib>
     $<$<CONFIG:RelWithDebInfo>:${OPENCV_LIB_DIR}/opencv_world451.lib>
     $<$<CONFIG:MinSizeRel>:${OPENCV_LIB_DIR}/opencv_world451.lib>
+    winmm
 )
 
 # Copy OpenCV DLLs to output directory

@@ -35,6 +35,7 @@
 #include "../observer/headers/WhiteScoreTracker.hpp"
 #include "../observer/headers/BlackScoreTracker.hpp"
 #include "../observer/headers/VoiceAnnouncer.hpp"
+#include "../observer/headers/SoundManager.hpp"
 
 #if __has_include(<filesystem>)
 #include <filesystem>
@@ -124,6 +125,7 @@ private:
     WhiteScoreTracker whiteScoreTracker_;
     BlackScoreTracker blackScoreTracker_;
     VoiceAnnouncer voiceAnnouncer_;
+    SoundManager soundManager_;
     
     // Helper functions for user interaction
     void setupEventListeners();
