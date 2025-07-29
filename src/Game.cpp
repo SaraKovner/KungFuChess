@@ -101,9 +101,20 @@ void Game::run_game_loop(int num_iterations, bool is_with_graphics) {
                         continue;
                     }
                     
-                    auto pos_m = display_board.cell_to_m(cell);
-                    auto pos_pix = display_board.m_to_pix(pos_m);
-                    
+
+
+                    // Use physics position for moving pieces, cell position for static pieces
+                    std::pair<int, int> pos_pix;
+                    if (piece->state->name == "move") {
+                        pos_pix = piece->state->physics->get_pos_pix();
+                        // Debug: print position during movement
+                        auto pos_m = piece->state->physics->get_pos_m();
+                        std::cout << "Moving piece at: (" << pos_m.first << ", " << pos_m.second << ") -> pix: (" << pos_pix.first << ", " << pos_pix.second << ")" << std::endl;
+                    } else {
+                        auto pos_m = display_board.cell_to_m(cell);
+                        pos_pix = display_board.m_to_pix(pos_m);
+                    }
+
                     piece_img->draw_on(*display_board.img, pos_pix.first, pos_pix.second);
                     pieces_drawn++;
                     
@@ -252,8 +263,16 @@ void Game::validate() {
 }
 
 bool Game::is_win() const {
-    return false;
+    int king_count = 0;
+
+    for (const auto& piece : pieces) {
+        if (piece->id.at(0)=='K') {
+            king_count++;
+        }
+    }
+    return king_count < 2;
 }
+
 
 void Game::enqueue_command(const Command& cmd) {
     std::lock_guard<std::mutex> lock(queue_mutex_);

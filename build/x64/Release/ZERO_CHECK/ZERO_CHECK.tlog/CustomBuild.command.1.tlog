@@ -1,6 +1,6 @@
-^C:\USERS\SKSK1\DOCUMENTS\לימודים\BOOTCAMP\CTD\CTD25_SOLUTIONS\KFC_MERGED\BUILD\CMAKEFILES\1A0F3A9032A900AB23D148197504DF11\GENERATE.STAMP.RULE
+^C:\USERS\THIS USER\DOCUMENTS\הנדסאות\CTD\איטרציה 2\CTD_SARA\KUNGFUCHESS\BUILD\CMAKEFILES\8A078D96642DE112114D4C5F9B060450\GENERATE.STAMP.RULE
 setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/sksk1/Documents/לימודים/BootCamp/CTD/CTD25_Solutions/KFC_Merged -BC:/Users/sksk1/Documents/לימודים/BootCamp/CTD/CTD25_Solutions/KFC_Merged/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/sksk1/Documents/לימודים/BootCamp/CTD/CTD25_Solutions/KFC_Merged/build/KungFuChess.sln
+"C:\Program Files\CMake\bin\cmake.exe" "-SC:/Users/This User/Documents/הנדסאות/CTD/איטרציה 2/CTD_Sara/KungFuChess" "-BC:/Users/This User/Documents/הנדסאות/CTD/איטרציה 2/CTD_Sara/KungFuChess/build" --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file "C:/Users/This User/Documents/הנדסאות/CTD/איטרציה 2/CTD_Sara/KungFuChess/build/KungFuChess.sln"
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone

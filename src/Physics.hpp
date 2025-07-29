@@ -5,6 +5,7 @@
 #include "Common.hpp"
 #include <cmath>
 #include <memory>
+#include <iostream>
 
 class BasePhysics {
 public:
@@ -42,13 +43,13 @@ class IdlePhysics : public BasePhysics {
 public:
     using BasePhysics::BasePhysics;
     void reset(const Command& cmd) override {
-        if(cmd.type == "done") {
-            end_cell = start_cell;
+        if(cmd.type == "done" && !cmd.params.empty()) {
+            start_cell = end_cell = cmd.params[0];
+            curr_pos_m = board.cell_to_m(start_cell);
         } else if(!cmd.params.empty()) {
             start_cell = end_cell = cmd.params[0];
             curr_pos_m = board.cell_to_m(start_cell);
         }
-        // Don't change position if no params - keep existing position
         start_ms = cmd.timestamp;
     }
     std::shared_ptr<Command> update(int) override { return nullptr; }
@@ -81,7 +82,7 @@ public:
         double seconds = (now_ms - start_ms) / 1000.0;
         if(seconds >= duration_s) {
             curr_pos_m = board.cell_to_m(end_cell);
-            return std::make_shared<Command>(Command{now_ms, "", "done", {}});
+            return std::make_shared<Command>(Command{now_ms, "", "done", {end_cell}});
         }
         double ratio = seconds / duration_s;
         curr_pos_m = { board.cell_to_m(start_cell).first + movement_vec.first * ratio,
@@ -105,15 +106,17 @@ public:
     double get_duration_s() const { return param; }
 
     void reset(const Command& cmd) override {
-        start_cell = end_cell = cmd.params[0];
-        curr_pos_m = board.cell_to_m(start_cell);
-        start_ms   = cmd.timestamp;
+        if(!cmd.params.empty()) {
+            start_cell = end_cell = cmd.params[0];
+            curr_pos_m = board.cell_to_m(start_cell);
+        }
+        start_ms = cmd.timestamp;
     }
 
     std::shared_ptr<Command> update(int now_ms) override {
         double seconds = (now_ms - start_ms) / 1000.0;
         if(seconds >= param) {
-            return std::make_shared<Command>(Command{now_ms, "", "done", {}});
+            return std::make_shared<Command>(Command{now_ms, "", "done", {end_cell}});
         }
         return nullptr;
     }

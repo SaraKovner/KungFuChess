@@ -1,6 +1,6 @@
 {
   "physics": {
-    "speed_m_per_sec": 5.0
+    "speed_m_per_sec": 1.5
   },
   "graphics": {
     "frames_per_sec": 12,

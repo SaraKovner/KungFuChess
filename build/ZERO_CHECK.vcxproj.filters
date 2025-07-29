@@ -1,13 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <CustomBuild Include="C:\Users\sksk1\Documents\לימודים\BootCamp\CTD\CTD25_Solutions\KFC_Merged\build\CMakeFiles\1a0f3a9032a900ab23d148197504df11\generate.stamp.rule">
+    <CustomBuild Include="C:\Users\This User\Documents\הנדסאות\CTD\איטרציה 2\CTD_Sara\KungFuChess\build\CMakeFiles\8a078d96642de112114d4c5f9b060450\generate.stamp.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CMake Rules">
-      <UniqueIdentifier>{61A2BD6E-643A-3C97-AF7E-A47EDB578D0D}</UniqueIdentifier>
+      <UniqueIdentifier>{FF770DF7-0C60-3805-979A-4191E9D21C42}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
