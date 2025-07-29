@@ -7,6 +7,7 @@
 #include <vector>
 #include <stdexcept>
 #include <unordered_set>
+#include <set>
 #include "img/Img.hpp"
 #include "img/ImgFactory.hpp"
 #include <fstream>

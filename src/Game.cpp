@@ -1,5 +1,8 @@
 #include "Game.hpp"
+#include "CaptureRules.hpp"
 #include <opencv2/opencv.hpp>
+#include <set>
+#include "Physics.hpp"
 
 // ---------------- Implementation --------------------
 Game::Game(std::vector<PiecePtr> pcs, Board board)
@@ -346,29 +349,40 @@ PiecePtr Game::find_piece_by_id(const std::string& id) {
 }
 
 void Game::check_captures() {
-    for (const auto& [cell, pieces_at_cell] : pos) {
+    // Create a copy of the position map to avoid iterator invalidation
+    auto pos_copy = pos;
+    
+    static std::set<std::string> already_captured; // Keep track globally
+    static std::set<std::pair<std::string, std::string>> reported_collisions; // Track reported collisions
+    
+    for (const auto& [cell, pieces_at_cell] : pos_copy) {
         if (pieces_at_cell.size() > 1) {
+            CaptureRules::print_collision_summary(cell, pieces_at_cell);
+            
+            // בדוק כל זוג חתיכות
             for (size_t i = 0; i < pieces_at_cell.size(); ++i) {
                 for (size_t j = i + 1; j < pieces_at_cell.size(); ++j) {
                     auto piece1 = pieces_at_cell[i];
                     auto piece2 = pieces_at_cell[j];
                     
-                    // Validate pieces before accessing their states
-                    if (piece1 && piece2 && piece1->state && piece2->state) {
-                        if (piece1->state->can_capture() && piece2->state->can_be_captured()) {
+                    // Validate pieces before processing
+                    if (piece1 && piece2 && piece1->state && piece2->state && 
+                        piece1->id.length() >= 2 && piece2->id.length() >= 2) {
+                        
+                        // Enhanced capture callback with Knight logic
+                        auto capture_callback = [this, cell](PiecePtr captured, PiecePtr captor) {
                             // Skip capture if knight is not at its target destination
-                            if (piece1->id.size() > 0 && piece1->id[0] == 'N' && 
-                                piece1->state->physics->end_cell != cell) {
-                                continue; // Knight doesn't capture unless at target
+                            if (captor->id.size() > 0 && captor->id[0] == 'N' && 
+                                captor->state->physics->end_cell != cell) {
+                                return; // Knight doesn't capture unless at target
                             }
-                            capture_piece(piece2, piece1);
-                        } else if (piece2->state->can_capture() && piece1->state->can_be_captured()) {
-                            // Skip capture if knight is not at its target destination
-                            if (piece2->id.size() > 0 && piece2->id[0] == 'N' && 
-                                piece2->state->physics->end_cell != cell) {
-                                continue; // Knight doesn't capture unless at target
-                            }
-                            capture_piece(piece1, piece2);
+                            this->capture_piece(captured, captor);
+                        };
+                        
+                        if (CaptureRules::process_collision_pair(piece1, piece2, already_captured, 
+                                                                     reported_collisions, game_time_ms(), 
+                                                                     capture_callback)) {
+                            return; // Exit after first capture
                         }
                     }
                 }
@@ -378,6 +392,9 @@ void Game::check_captures() {
 }
 
 void Game::capture_piece(PiecePtr captured, PiecePtr captor) {
+    std::cout << "capture_piece CALLED: " << (captured ? captured->id : "NULL") 
+              << " captured by " << (captor ? captor->id : "NULL") << std::endl;
+    
     if (captured && captor) {
         pieces.erase(std::remove(pieces.begin(), pieces.end(), captured), pieces.end());
         piece_by_id.erase(captured->id);
@@ -392,8 +409,12 @@ std::string Game::get_position_key(int x, int y) {
 
 bool Game::is_move_valid(PiecePtr piece, const std::pair<int,int>& from, const std::pair<int,int>& to) {
     if (!piece || !piece->state || !piece->state->moves) {
+        std::cout << "MOVE_VALIDATION: Invalid piece or state" << std::endl;
         return false;
     }
+    
+    std::cout << "MOVE_VALIDATION: " << piece->id << " מנסה לזוז מ-(" << from.first << "," << from.second 
+              << ") ל-(" << to.first << "," << to.second << ")" << std::endl;
     
     // Check if piece can move (not in rest state)
     if (piece->state->name == "long_rest" || piece->state->name == "short_rest") {
@@ -439,10 +460,39 @@ bool Game::is_move_valid(PiecePtr piece, const std::pair<int,int>& from, const s
     for (const auto& [cell, pieces_at_cell] : pos) {
         if (!pieces_at_cell.empty()) {
             occupied_cells.insert(cell);
+            std::cout << "OCCUPIED CELL: (" << cell.first << "," << cell.second << ") בה נמצא " << pieces_at_cell[0]->id << std::endl;
         }
     }
     
-    return piece->state->moves->is_valid(from, to, occupied_cells);
+    // Check if target cell has pieces and what team they are
+    auto target_pieces_it = pos.find(to);
+    if (target_pieces_it != pos.end() && !target_pieces_it->second.empty()) {
+        auto target_piece = target_pieces_it->second[0];
+        if (target_piece && target_piece->id.length() >= 2 && piece->id.length() >= 2) {
+            char moving_team = piece->id[1];
+            char target_team = target_piece->id[1];
+            std::cout << "MOVE_VALIDATION: " << piece->id << " (team " << moving_team 
+                      << ") wants to move to cell with " << target_piece->id << " (team " << target_team << ")" << std::endl;
+            
+            if (moving_team == target_team) {
+                std::cout << "MOVE_VALIDATION: BLOCKED - Same team!" << std::endl;
+                return false; // Block same-team moves
+            }
+        }
+    }
+    
+    std::cout << "CALLING piece->state->moves->is_valid() עם " << occupied_cells.size() << " תאים תפוסים" << std::endl;
+    bool result = piece->state->moves->is_valid(from, to, occupied_cells);
+    std::cout << "MOVE_VALIDATION: Result = " << (result ? "VALID" : "INVALID") << std::endl;
+    
+    if (!result) {
+        std::cout << "MOVE FAILED ANALYSIS:" << std::endl;
+        std::cout << "  Piece type: " << piece->id[0] << std::endl;
+        std::cout << "  Distance: dx=" << abs(to.first - from.first) << ", dy=" << abs(to.second - from.second) << std::endl;
+        std::cout << "  Path blocking check needed..." << std::endl;
+    }
+    
+    return result;
 }
 
 char Game::get_piece_color(PiecePtr piece) {
