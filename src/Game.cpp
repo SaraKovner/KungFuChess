@@ -1,5 +1,7 @@
 #include "Game.hpp"
 #include <opencv2/opencv.hpp>
+#include <set>
+#include "Physics.hpp"
 
 // ---------------- Implementation --------------------
 Game::Game(std::vector<PiecePtr> pcs, Board board)
@@ -343,19 +345,170 @@ PiecePtr Game::find_piece_by_id(const std::string& id) {
 }
 
 void Game::check_captures() {
-    for (const auto& [cell, pieces_at_cell] : pos) {
+    // Create a copy of the position map to avoid iterator invalidation
+    auto pos_copy = pos;
+    
+    static std::set<std::string> already_captured; // Keep track globally
+    static std::set<std::pair<std::string, std::string>> reported_collisions; // Track reported collisions
+    
+    for (const auto& [cell, pieces_at_cell] : pos_copy) {
         if (pieces_at_cell.size() > 1) {
+            std::cout << "=== COLLISION DETECTED AT CELL (" << cell.first << "," << cell.second << ") ===" << std::endl;
+            std::cout << "PIECES IN COLLISION:" << std::endl;
+            for (size_t k = 0; k < pieces_at_cell.size(); ++k) {
+                auto p = pieces_at_cell[k];
+                std::cout << "  [" << k << "] " << p->id << " - state: " << p->state->name 
+                          << ", start_ms: " << p->state->physics->start_ms << std::endl;
+            }
+            
             for (size_t i = 0; i < pieces_at_cell.size(); ++i) {
                 for (size_t j = i + 1; j < pieces_at_cell.size(); ++j) {
                     auto piece1 = pieces_at_cell[i];
                     auto piece2 = pieces_at_cell[j];
                     
+                    // Skip if either piece is already captured
+                    if (already_captured.count(piece1->id) || already_captured.count(piece2->id)) {
+                        continue;
+                    }
+                    
+                    // Create collision key to avoid duplicate reports
+                    std::string key1 = piece1->id + "+" + piece2->id;
+                    std::string key2 = piece2->id + "+" + piece1->id;
+                    
                     // Validate pieces before accessing their states
-                    if (piece1 && piece2 && piece1->state && piece2->state) {
-                        if (piece1->state->can_capture() && piece2->state->can_be_captured()) {
-                            capture_piece(piece2, piece1);
-                        } else if (piece2->state->can_capture() && piece1->state->can_be_captured()) {
-                            capture_piece(piece1, piece2);
+                    if (piece1 && piece2 && piece1->state && piece2->state && 
+                        piece1->id.length() >= 2 && piece2->id.length() >= 2) {
+                        
+                        // בדיקת צוות - האות השנייה בID (W או B)
+                        char piece1_team = piece1->id[1];
+                        char piece2_team = piece2->id[1];
+                        
+                        // Only print if this collision hasn't been reported yet
+                        if (reported_collisions.find({key1, key2}) == reported_collisions.end() && 
+                            reported_collisions.find({key2, key1}) == reported_collisions.end()) {
+                            std::cout << "COLLISION: " << piece1->id << " (team " << piece1_team 
+                                      << ") vs " << piece2->id << " (team " << piece2_team << ")" << std::endl;
+                            reported_collisions.insert({key1, key2});
+                        }
+                        
+                        if (piece1_team == piece2_team) {
+                            // שני כלים מאותו צוות - לא לעשות כלום!
+                            std::cout << "SAME TEAM BLOCKED: " << piece1->id << " and " << piece2->id << " - NO ACTION" << std::endl;
+                            continue;
+                        }
+                        
+                        // רק אם הם מצוותים שונים - בדוק מי התוקף ומי הקורבן
+                        // DEBUG: מצבי החתיכות ופיזיקה מפורטת
+                        
+                        std::cout << "\n--- DETAILED PIECE ANALYSIS ---" << std::endl;
+                        
+                        // פרטי piece1
+                        std::cout << piece1->id << ":" << std::endl;
+                        std::cout << "  Current state: " << piece1->state->name << std::endl;
+                        std::cout << "  Physics start_ms: " << piece1->state->physics->start_ms << std::endl;
+                        std::cout << "  Physics type: " << typeid(*(piece1->state->physics)).name() << std::endl;
+                        if (piece1->state->name == "move") {
+                            auto move_phys1 = std::dynamic_pointer_cast<MovePhysics>(piece1->state->physics);
+                            if (move_phys1) {
+                                std::cout << "  Move duration: " << move_phys1->get_duration_s() << "s" << std::endl;
+                                std::cout << "  Estimated arrival: " << (piece1->state->physics->start_ms + (int)(move_phys1->get_duration_s() * 1000)) << "ms" << std::endl;
+                            }
+                        }
+                        
+                        // פרטי piece2  
+                        std::cout << piece2->id << ":" << std::endl;
+                        std::cout << "  Current state: " << piece2->state->name << std::endl;
+                        std::cout << "  Physics start_ms: " << piece2->state->physics->start_ms << std::endl;
+                        std::cout << "  Physics type: " << typeid(*(piece2->state->physics)).name() << std::endl;
+                        if (piece2->state->name == "move") {
+                            auto move_phys2 = std::dynamic_pointer_cast<MovePhysics>(piece2->state->physics);
+                            if (move_phys2) {
+                                std::cout << "  Move duration: " << move_phys2->get_duration_s() << "s" << std::endl;
+                                std::cout << "  Estimated arrival: " << (piece2->state->physics->start_ms + (int)(move_phys2->get_duration_s() * 1000)) << "ms" << std::endl;
+                            }
+                        }
+                        
+                        std::cout << "Current game time: " << game_time_ms() << "ms" << std::endl;
+                        std::cout << "--- END ANALYSIS ---\n" << std::endl;
+                        
+                        bool piece1_is_moving = (piece1->state->name == "move");
+                        bool piece2_is_moving = (piece2->state->name == "move");
+                        
+                        // זמן הגעה אמיתי לתא - start_ms + duration עבור חתיכות שזזו
+                        int piece1_arrival_time = piece1->state->physics->start_ms;
+                        int piece2_arrival_time = piece2->state->physics->start_ms;
+                        
+                        // אם החתיכה בmove, נחשב מתי היא תגיע/הגיעה
+                        if (piece1_is_moving) {
+                            auto move_physics1 = std::dynamic_pointer_cast<MovePhysics>(piece1->state->physics);
+                            if (move_physics1) {
+                                piece1_arrival_time += (int)(move_physics1->get_duration_s() * 1000);
+                            }
+                        }
+                        
+                        if (piece2_is_moving) {
+                            auto move_physics2 = std::dynamic_pointer_cast<MovePhysics>(piece2->state->physics);
+                            if (move_physics2) {
+                                piece2_arrival_time += (int)(move_physics2->get_duration_s() * 1000);
+                            }
+                        }
+                        
+                        std::cout << "ANALYSIS: " << piece1->id << " (state=" << piece1->state->name 
+                                  << ", arrival_time=" << piece1_arrival_time << "ms) vs " 
+                                  << piece2->id << " (state=" << piece2->state->name 
+                                  << ", arrival_time=" << piece2_arrival_time << "ms)" << std::endl;
+                        
+                        PiecePtr attacker = nullptr;
+                        PiecePtr victim = nullptr;
+                        
+                        // בשחמט: מי שמגיע למקום (זמן הגעה מאוחר יותר) אוכל את מי שכבר נמצא במקום (זמן הגעה מוקדם יותר)
+                        if (piece1_arrival_time > piece2_arrival_time) {
+                            attacker = piece1;  // הגיע אחרון = מגיע עכשיו = תוקף
+                            victim = piece2;    // הגיע קודם = היה במקום = קורבן
+                            std::cout << "ATTACKER: " << piece1->id << " (הגיע " << piece1_arrival_time 
+                                      << "ms) לוכד VICTIM: " << piece2->id << " (היה במקום מ-" << piece2_arrival_time << "ms)" << std::endl;
+                            
+                        } else if (piece2_arrival_time > piece1_arrival_time) {
+                            attacker = piece2;  // הגיע אחרון = מגיע עכשיו = תוקף
+                            victim = piece1;    // הגיע קודם = היה במקום = קורבן
+                            std::cout << "ATTACKER: " << piece2->id << " (הגיע " << piece2_arrival_time 
+                                      << "ms) לוכד VICTIM: " << piece1->id << " (היה במקום מ-" << piece1_arrival_time << "ms)" << std::endl;
+                            
+                        } else {
+                            // הגיעו באותו זמן - בדוק מי יצא קודם (זמן התחלת המסע)
+                            std::cout << "SIMULTANEOUS ARRIVAL: " << piece1->id << " and " << piece2->id 
+                                      << " both arrived at " << piece1_arrival_time << "ms" << std::endl;
+                            std::cout << "CHECKING START TIMES: " << piece1->id << " started at " 
+                                      << piece1->state->physics->start_ms << "ms vs " << piece2->id 
+                                      << " started at " << piece2->state->physics->start_ms << "ms" << std::endl;
+                            
+                            if (piece1->state->physics->start_ms < piece2->state->physics->start_ms) {
+                                attacker = piece1;  // יצא קודם = עדיפות
+                                victim = piece2;
+                                std::cout << "ATTACKER: " << piece1->id << " (יצא קודם " << piece1->state->physics->start_ms 
+                                          << "ms) לוכד VICTIM: " << piece2->id << " (יצא אחר כך " << piece2->state->physics->start_ms << "ms)" << std::endl;
+                            } else if (piece2->state->physics->start_ms < piece1->state->physics->start_ms) {
+                                attacker = piece2;  // יצא קודם = עדיפות
+                                victim = piece1;
+                                std::cout << "ATTACKER: " << piece2->id << " (יצא קודם " << piece2->state->physics->start_ms 
+                                          << "ms) לוכד VICTIM: " << piece1->id << " (יצא אחר כך " << piece1->state->physics->start_ms << "ms)" << std::endl;
+                            } else {
+                                // גם יצאו באותו זמן - אין לכידה!
+                                std::cout << "PERFECT TIE: Both pieces started and arrived at exactly the same time - NO CAPTURE" << std::endl;
+                                continue;
+                            }
+                        }
+                        
+                        // בדוק אם התוקף יכול לאכול את הקורבן
+                        // בקונג-פו שח: מי שמגיע למקום עם מישהו אחר תמיד נלחם!
+                        if (attacker && victim) {
+                            std::cout << "COMBAT: " << attacker->id << " (earlier arrival) fights " << victim->id << std::endl;
+                            std::cout << "COMBAT RESULT: " << attacker->id << " wins and captures " << victim->id << std::endl;
+                            already_captured.insert(victim->id);
+                            capture_piece(victim, attacker);
+                            return; // Exit completely after capture
+                        } else {
+                            std::cout << "ERROR: Invalid attacker/victim pointers" << std::endl;
                         }
                     }
                 }
@@ -365,6 +518,9 @@ void Game::check_captures() {
 }
 
 void Game::capture_piece(PiecePtr captured, PiecePtr captor) {
+    std::cout << "capture_piece CALLED: " << (captured ? captured->id : "NULL") 
+              << " captured by " << (captor ? captor->id : "NULL") << std::endl;
+    
     if (captured && captor) {
         pieces.erase(std::remove(pieces.begin(), pieces.end(), captured), pieces.end());
         piece_by_id.erase(captured->id);
@@ -379,8 +535,12 @@ std::string Game::get_position_key(int x, int y) {
 
 bool Game::is_move_valid(PiecePtr piece, const std::pair<int,int>& from, const std::pair<int,int>& to) {
     if (!piece || !piece->state || !piece->state->moves) {
+        std::cout << "MOVE_VALIDATION: Invalid piece or state" << std::endl;
         return false;
     }
+    
+    std::cout << "MOVE_VALIDATION: " << piece->id << " מנסה לזוז מ-(" << from.first << "," << from.second 
+              << ") ל-(" << to.first << "," << to.second << ")" << std::endl;
     
     // Update position map to ensure accuracy
     update_cell2piece_map();
@@ -390,10 +550,39 @@ bool Game::is_move_valid(PiecePtr piece, const std::pair<int,int>& from, const s
     for (const auto& [cell, pieces_at_cell] : pos) {
         if (!pieces_at_cell.empty()) {
             occupied_cells.insert(cell);
+            std::cout << "OCCUPIED CELL: (" << cell.first << "," << cell.second << ") בה נמצא " << pieces_at_cell[0]->id << std::endl;
         }
     }
     
-    return piece->state->moves->is_valid(from, to, occupied_cells);
+    // Check if target cell has pieces and what team they are
+    auto target_pieces_it = pos.find(to);
+    if (target_pieces_it != pos.end() && !target_pieces_it->second.empty()) {
+        auto target_piece = target_pieces_it->second[0];
+        if (target_piece && target_piece->id.length() >= 2 && piece->id.length() >= 2) {
+            char moving_team = piece->id[1];
+            char target_team = target_piece->id[1];
+            std::cout << "MOVE_VALIDATION: " << piece->id << " (team " << moving_team 
+                      << ") wants to move to cell with " << target_piece->id << " (team " << target_team << ")" << std::endl;
+            
+            if (moving_team == target_team) {
+                std::cout << "MOVE_VALIDATION: BLOCKED - Same team!" << std::endl;
+                return false; // Block same-team moves
+            }
+        }
+    }
+    
+    std::cout << "CALLING piece->state->moves->is_valid() עם " << occupied_cells.size() << " תאים תפוסים" << std::endl;
+    bool result = piece->state->moves->is_valid(from, to, occupied_cells);
+    std::cout << "MOVE_VALIDATION: Result = " << (result ? "VALID" : "INVALID") << std::endl;
+    
+    if (!result) {
+        std::cout << "MOVE FAILED ANALYSIS:" << std::endl;
+        std::cout << "  Piece type: " << piece->id[0] << std::endl;
+        std::cout << "  Distance: dx=" << abs(to.first - from.first) << ", dy=" << abs(to.second - from.second) << std::endl;
+        std::cout << "  Path blocking check needed..." << std::endl;
+    }
+    
+    return result;
 }
 
 Game create_game(const std::string& pieces_root, ImgFactoryPtr img_factory) {

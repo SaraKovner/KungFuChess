@@ -1,6 +1,6 @@
-^C:\USERS\THIS USER\DOCUMENTS\הנדסאות\CTD\איטרציה 2\CTD_SARA\KUNGFUCHESS\CMAKELISTS.TXT
+^C:\USERS\USER\DOCUMENTS\PROGRAMING\BOOTCAMP\SARA\KUNGFUCHESS\CMAKELISTS.TXT
 setlocal
-"C:\Program Files\CMake\bin\cmake.exe" "-SC:/Users/This User/Documents/הנדסאות/CTD/איטרציה 2/CTD_Sara/KungFuChess" "-BC:/Users/This User/Documents/הנדסאות/CTD/איטרציה 2/CTD_Sara/KungFuChess/build" --check-stamp-file "C:/Users/This User/Documents/הנדסאות/CTD/איטרציה 2/CTD_Sara/KungFuChess/build/CMakeFiles/generate.stamp"
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/USER/Documents/programing/bootcamp/sara/KungFuChess -BC:/Users/USER/Documents/programing/bootcamp/sara/KungFuChess/build --check-stamp-file C:/Users/USER/Documents/programing/bootcamp/sara/KungFuChess/build/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
