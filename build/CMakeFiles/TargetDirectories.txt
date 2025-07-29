@@ -1,4 +1,0 @@
-C:/Users/USER/Documents/programing/bootcamp/sara/KungFuChess/build/CMakeFiles/kungfu_chess_lib.dir
-C:/Users/USER/Documents/programing/bootcamp/sara/KungFuChess/build/CMakeFiles/KungFuChess.dir
-C:/Users/USER/Documents/programing/bootcamp/sara/KungFuChess/build/CMakeFiles/ALL_BUILD.dir
-C:/Users/USER/Documents/programing/bootcamp/sara/KungFuChess/build/CMakeFiles/ZERO_CHECK.dir

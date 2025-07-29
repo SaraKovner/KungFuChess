@@ -19,7 +19,19 @@ public:
     virtual std::shared_ptr<Command> update(int now_ms) = 0;
 
     std::pair<double,double> get_pos_m() const { return curr_pos_m; }
-    std::pair<int,int> get_pos_pix() const { return board.m_to_pix(curr_pos_m); }
+    std::pair<int,int> get_pos_pix() const { 
+        double x_m = curr_pos_m.first;
+        double y_m = curr_pos_m.second;
+        
+        // Use safe pixel values if board is corrupted
+        int safe_cell_W_pix = (board.cell_W_pix <= 0) ? 80 : board.cell_W_pix;
+        int safe_cell_H_pix = (board.cell_H_pix <= 0) ? 80 : board.cell_H_pix;
+        
+        int x_px = static_cast<int>(std::round(x_m * safe_cell_W_pix));
+        int y_px = static_cast<int>(std::round(y_m * safe_cell_H_pix));
+        
+        return {x_px, y_px};
+    }
     std::pair<int,int> get_curr_cell() const { return board.m_to_cell(curr_pos_m); }
 
     int get_start_ms() const { return start_ms; }
@@ -43,12 +55,13 @@ class IdlePhysics : public BasePhysics {
 public:
     using BasePhysics::BasePhysics;
     void reset(const Command& cmd) override {
-        if(cmd.type == "done" && !cmd.params.empty()) {
+        if(!cmd.params.empty()) {
             start_cell = end_cell = cmd.params[0];
-            curr_pos_m = board.cell_to_m(start_cell);
-        } else if(!cmd.params.empty()) {
-            start_cell = end_cell = cmd.params[0];
-            curr_pos_m = board.cell_to_m(start_cell);
+            curr_pos_m = {static_cast<double>(start_cell.second), static_cast<double>(start_cell.first)};
+        } else {
+            // Fallback to origin if no parameters
+            start_cell = end_cell = {0, 0};
+            curr_pos_m = {0.0, 0.0};
         }
         start_ms = cmd.timestamp;
     }
@@ -65,6 +78,12 @@ public:
         : BasePhysics(board, speed_cells_per_s) {}
 
     void reset(const Command& cmd) override {
+        if (cmd.params.size() < 2) {
+            // Invalid command, stay at current position
+            std::cout << "MOVE: Invalid command - not enough parameters" << std::endl;
+            return;
+        }
+        
         start_cell = cmd.params[0];
         end_cell   = cmd.params[1];
         start_ms   = cmd.timestamp;
@@ -81,14 +100,27 @@ public:
     }
 
     std::shared_ptr<Command> update(int now_ms) override {
+        // Use safe board values if needed
+        double safe_cell_H_m = (board.cell_H_m < 0.1) ? 1.0 : board.cell_H_m;
+        double safe_cell_W_m = (board.cell_W_m < 0.1) ? 1.0 : board.cell_W_m;
+        
         double seconds = (now_ms - start_ms) / 1000.0;
         if(seconds >= duration_s) {
-            curr_pos_m = board.cell_to_m(end_cell);
+            curr_pos_m = {static_cast<double>(end_cell.second), static_cast<double>(end_cell.first)};
+            std::cout << "MOVE completed at: (" << curr_pos_m.first << "," << curr_pos_m.second << ")" << std::endl;
             return std::make_shared<Command>(Command{now_ms, "", "done", {end_cell}});
         }
         double ratio = seconds / duration_s;
-        curr_pos_m = { board.cell_to_m(start_cell).first + movement_vec.first * ratio,
-                       board.cell_to_m(start_cell).second + movement_vec.second * ratio };
+        
+        // Safe calculation with bounds checking
+        if (ratio >= 0.0 && ratio <= 1.0 && duration_s > 0.0) {
+            auto start_pos = std::make_pair(static_cast<double>(start_cell.second), static_cast<double>(start_cell.first));
+            curr_pos_m = { start_pos.first + movement_vec.first * ratio,
+                           start_pos.second + movement_vec.second * ratio };
+        } else {
+            // Fallback to start position if calculation is invalid
+            curr_pos_m = std::make_pair(static_cast<double>(start_cell.second), static_cast<double>(start_cell.first));
+        }
         return nullptr;
     }
 
@@ -110,7 +142,7 @@ public:
     void reset(const Command& cmd) override {
         if(!cmd.params.empty()) {
             start_cell = end_cell = cmd.params[0];
-            curr_pos_m = board.cell_to_m(start_cell);
+            curr_pos_m = {static_cast<double>(start_cell.second), static_cast<double>(start_cell.first)};
         }
         start_ms = cmd.timestamp;
     }

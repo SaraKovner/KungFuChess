@@ -4,7 +4,7 @@
 #include <memory>
 #include <string>
 #include "img/ImgFactory.hpp"
-#include "nlohmann/json_fwd.hpp"
+#include "nlohmann/json.hpp"
 
 
 // Simple GraphicsFactory that forwards an image loader placeholder to
@@ -16,10 +16,13 @@ public:
         : img_factory(factory_ptr) {}
 
     std::shared_ptr<Graphics> load(const std::string& sprites_dir,
-                                   const nlohmann::json& /*cfg*/, // ignored
+                                   const nlohmann::json& cfg,
                                    std::pair<int,int> cell_size) const {
-        // For now, create a Graphics object with blank frames produced by img_factory
-        auto gfx = std::make_shared<Graphics>(sprites_dir, cell_size, img_factory, /*loop*/true, /*fps*/6.0);
+        // Extract graphics settings from config
+        bool loop = cfg.value("is_loop", true);
+        double fps = cfg.value("frames_per_sec", 3.0); // Slower default FPS
+        
+        auto gfx = std::make_shared<Graphics>(sprites_dir, cell_size, img_factory, loop, fps);
         (void)cell_size; // unused for now
         return gfx;
     }
