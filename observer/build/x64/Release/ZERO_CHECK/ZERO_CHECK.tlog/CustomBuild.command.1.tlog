@@ -1,0 +1,10 @@
+^C:\USERS\USER\DOCUMENTS\PROGRAMING\BOOTCAMP\SARA\KUNGFUCHESS\OBSERVER\BUILD\CMAKEFILES\8395C72D1945928B7C2F87C9F39C22E7\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/USER/Documents/programing/bootcamp/sara/KungFuChess/observer -BC:/Users/USER/Documents/programing/bootcamp/sara/KungFuChess/observer/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/USER/Documents/programing/bootcamp/sara/KungFuChess/observer/build/KungFuChess_Observer.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

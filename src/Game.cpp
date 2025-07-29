@@ -3,10 +3,13 @@
 #include <opencv2/opencv.hpp>
 #include <set>
 #include "Physics.hpp"
+#include "../observer/headers/MoveEvent.hpp"
+#include "../observer/headers/CaptureEvent.hpp"
+#include "../observer/headers/GameStateEvent.hpp"
 
 // ---------------- Implementation --------------------
 Game::Game(std::vector<PiecePtr> pcs, Board board)
-    : pieces(pcs), board(board) {
+    : pieces(pcs), board(board), background_img_(nullptr) {
     validate();
     for(const auto & p : pieces) {
         if (p) {
@@ -16,6 +19,23 @@ Game::Game(std::vector<PiecePtr> pcs, Board board)
     start_tp = std::chrono::steady_clock::now();
     // Initialize position map
     update_cell2piece_map();
+    // Setup event observers
+    setupEventListeners();
+}
+
+Game::Game(std::vector<PiecePtr> pcs, Board board, ImgPtr background_img)
+    : pieces(pcs), board(board), background_img_(background_img) {
+    validate();
+    for(const auto & p : pieces) {
+        if (p) {
+            piece_by_id[p->id] = p;
+        }
+    }
+    start_tp = std::chrono::steady_clock::now();
+    // Initialize position map
+    update_cell2piece_map();
+    // Setup event observers
+    setupEventListeners();
 }
 
 int Game::game_time_ms() const {
@@ -29,6 +49,12 @@ Board Game::clone_board() const {
 
 void Game::run(int num_iterations, bool is_with_graphics) {
     running_ = true;
+    
+    // פרסום תחילת משחק
+    GameStateEvent startEvent(GameState::Playing, GameState::Paused, "Game started", game_time_ms());
+    eventManager_.publishGameState(startEvent);
+    currentGameState_ = GameState::Playing;
+    
     start_user_input_thread();
     int start_ms = game_time_ms();
     // Don't call reset - it breaks piece positions
@@ -75,96 +101,187 @@ void Game::run_game_loop(int num_iterations, bool is_with_graphics) {
         // Input processing moved to graphics section where OpenCV handles keys
 
         if(is_with_graphics) {
-            // Create a copy of the board to draw pieces on
-            auto display_board = board.clone();
+            // Use background image if available, otherwise create board copy
+            ImgPtr display_img;
+            Board display_board = board.clone();
             
-            int pieces_drawn = 0;
-            int pieces_failed = 0;
-            
-            // Draw all pieces on the board
-            for(const auto& piece : pieces) {
-                auto cell = piece->current_cell();
+            if (background_img_) {
+                // Clone background and draw interface
+                display_img = background_img_->clone();
+                drawGameInterface(display_img);
                 
-                try {
-                    if (!piece->state) {
-                        pieces_failed++;
-                        continue;
-                    }
+                // Calculate board position on background (centered)
+                int board_x_offset = (1024 - 640) / 2;
+                int board_y_offset = (768 - 640) / 2;
+                
+                // Draw board on background
+                display_board.img->draw_on(*display_img, board_x_offset, board_y_offset);
+                
+                int pieces_drawn = 0;
+                int pieces_failed = 0;
+                
+                // Draw all pieces on the board (with offset for background)
+                for(const auto& piece : pieces) {
+                    auto cell = piece->current_cell();
                     
-                    if (!piece->state->graphics) {
-                        pieces_failed++;
-                        continue;
-                    }
-                    
-                    // Update graphics before getting image
-                    piece->state->graphics->update(now);
-                    auto piece_img = piece->state->graphics->get_img();
-                    if (!piece_img) {
-                        pieces_failed++;
-                        continue;
-                    }
-                    
-
-
-                    // Use physics position for moving pieces, cell position for static pieces
-                    std::pair<int, int> pos_pix;
-                    if (piece->state->name == "move" || piece->state->name == "jump") {
-                        auto pos_m = piece->state->physics->get_pos_m();
-                        pos_pix = piece->state->physics->get_pos_pix();
-                        // Fallback: if position is (0,0), use cell position instead
-                        if (pos_m.first == 0.0 && pos_m.second == 0.0) {
-                            auto pos_m_fallback = display_board.cell_to_m(cell);
-                            pos_pix = display_board.m_to_pix(pos_m_fallback);
+                    try {
+                        if (!piece->state) {
+                            pieces_failed++;
+                            continue;
                         }
-                    } else {
-                        auto pos_m = display_board.cell_to_m(cell);
-                        pos_pix = display_board.m_to_pix(pos_m);
-                    }
+                        
+                        if (!piece->state->graphics) {
+                            pieces_failed++;
+                            continue;
+                        }
+                        
+                        // Update graphics before getting image
+                        piece->state->graphics->update(now);
+                        auto piece_img = piece->state->graphics->get_img();
+                        if (!piece_img) {
+                            pieces_failed++;
+                            continue;
+                        }
 
-                    piece_img->draw_on(*display_board.img, pos_pix.first, pos_pix.second);
-                    pieces_drawn++;
+                        // Use physics position for moving pieces, cell position for static pieces
+                        std::pair<int, int> pos_pix;
+                        if (piece->state->name == "move" || piece->state->name == "jump") {
+                            auto pos_m = piece->state->physics->get_pos_m();
+                            pos_pix = piece->state->physics->get_pos_pix();
+                            // Fallback: if position is (0,0), use cell position instead
+                            if (pos_m.first == 0.0 && pos_m.second == 0.0) {
+                                auto pos_m_fallback = display_board.cell_to_m(cell);
+                                pos_pix = display_board.m_to_pix(pos_m_fallback);
+                            }
+                        } else {
+                            auto pos_m = display_board.cell_to_m(cell);
+                            pos_pix = display_board.m_to_pix(pos_m);
+                        }
+
+                        // Add offset for background positioning
+                        pos_pix.first += board_x_offset;
+                        pos_pix.second += board_y_offset;
+                        
+                        piece_img->draw_on(*display_img, pos_pix.first, pos_pix.second);
+                        pieces_drawn++;
+                        
+                    } catch (const std::exception& e) {
+                        pieces_failed++;
+                    }
+                }
+                
+                if (pieces_drawn > 0) {
+                    // Draw green border around current cursor position
+                    auto cursor_pos_m = display_board.cell_to_m(cursor_pos_);
+                    auto cursor_pos_pix = display_board.m_to_pix(cursor_pos_m);
+                    int cell_size = 80;
+                    cursor_pos_pix.first += board_x_offset;
+                    cursor_pos_pix.second += board_y_offset;
                     
-                } catch (const std::exception& e) {
-                    pieces_failed++;
+                    display_img->draw_rect(cursor_pos_pix.first, cursor_pos_pix.second, 
+                                          cell_size, cell_size, {0, 255, 0}); // Green border
+                    
+                    // Draw blue border around selected piece
+                    if (selected_piece_) {
+                        auto selected_pos_m = display_board.cell_to_m(selected_piece_pos_);
+                        auto selected_pos_pix = display_board.m_to_pix(selected_pos_m);
+                        selected_pos_pix.first += board_x_offset;
+                        selected_pos_pix.second += board_y_offset;
+                        
+                        display_img->draw_rect(selected_pos_pix.first, selected_pos_pix.second, 
+                                              cell_size, cell_size, {255, 0, 0}); // Blue border
+                    }
+                    
+                    display_img->show();
+                }
+            } else {
+                // Fallback to original board-only display
+                int pieces_drawn = 0;
+                int pieces_failed = 0;
+                
+                // Draw all pieces on the board
+                for(const auto& piece : pieces) {
+                    auto cell = piece->current_cell();
+                    
+                    try {
+                        if (!piece->state) {
+                            pieces_failed++;
+                            continue;
+                        }
+                        
+                        if (!piece->state->graphics) {
+                            pieces_failed++;
+                            continue;
+                        }
+                        
+                        // Update graphics before getting image
+                        piece->state->graphics->update(now);
+                        auto piece_img = piece->state->graphics->get_img();
+                        if (!piece_img) {
+                            pieces_failed++;
+                            continue;
+                        }
+
+                        // Use physics position for moving pieces, cell position for static pieces
+                        std::pair<int, int> pos_pix;
+                        if (piece->state->name == "move" || piece->state->name == "jump") {
+                            auto pos_m = piece->state->physics->get_pos_m();
+                            pos_pix = piece->state->physics->get_pos_pix();
+                            // Fallback: if position is (0,0), use cell position instead
+                            if (pos_m.first == 0.0 && pos_m.second == 0.0) {
+                                auto pos_m_fallback = display_board.cell_to_m(cell);
+                                pos_pix = display_board.m_to_pix(pos_m_fallback);
+                            }
+                        } else {
+                            auto pos_m = display_board.cell_to_m(cell);
+                            pos_pix = display_board.m_to_pix(pos_m);
+                        }
+
+                        piece_img->draw_on(*display_board.img, pos_pix.first, pos_pix.second);
+                        pieces_drawn++;
+                        
+                    } catch (const std::exception& e) {
+                        pieces_failed++;
+                    }
+                }
+                
+                if (pieces_drawn > 0) {
+                    // Draw green border around current cursor position
+                    auto cursor_pos_m = display_board.cell_to_m(cursor_pos_);
+                    auto cursor_pos_pix = display_board.m_to_pix(cursor_pos_m);
+                    int cell_size = 80;
+                    display_board.img->draw_rect(cursor_pos_pix.first, cursor_pos_pix.second, 
+                                                cell_size, cell_size, {0, 255, 0}); // Green border
+                    
+                    // Draw blue border around selected piece
+                    if (selected_piece_) {
+                        auto selected_pos_m = display_board.cell_to_m(selected_piece_pos_);
+                        auto selected_pos_pix = display_board.m_to_pix(selected_pos_m);
+                        display_board.img->draw_rect(selected_pos_pix.first, selected_pos_pix.second, 
+                                                   cell_size, cell_size, {255, 0, 0}); // Blue border
+                    }
+                    
+                    display_board.show();
                 }
             }
             
-            if (pieces_drawn > 0) {
-                // Draw green border around current cursor position
-                auto cursor_pos_m = display_board.cell_to_m(cursor_pos_);
-                auto cursor_pos_pix = display_board.m_to_pix(cursor_pos_m);
-                int cell_size = 80;
-                display_board.img->draw_rect(cursor_pos_pix.first, cursor_pos_pix.second, 
-                                           cell_size, cell_size, {0, 255, 0}); // Green border
+            // Handle input in main loop where window exists
+            int key = cv::waitKeyEx(30);
+            if (key != -1) {
+                Command cmd(game_time_ms(), "", "", {});
                 
-                // Draw blue border around selected piece
-                if (selected_piece_) {
-                    auto selected_pos_m = display_board.cell_to_m(selected_piece_pos_);
-                    auto selected_pos_pix = display_board.m_to_pix(selected_pos_m);
-                    display_board.img->draw_rect(selected_pos_pix.first, selected_pos_pix.second, 
-                                               cell_size, cell_size, {255, 0, 0}); // Blue border
+                // Arrow keys controls (final: swap 8 and 2)
+                if (key == 2424832) cmd = Command(game_time_ms(), "", "up", {});    // 4 -> Up
+                else if (key == 2555904) cmd = Command(game_time_ms(), "", "down", {});  // 6 -> Down  
+                else if (key == 2490368) cmd = Command(game_time_ms(), "", "left", {});  // 8 -> Left
+                else if (key == 2621440) cmd = Command(game_time_ms(), "", "right", {}); // 2 -> Right
+                else if (key == 13) cmd = Command(game_time_ms(), "", "select", {});  // Enter
+                else if (key == 27) { // ESC
+                    return;
                 }
                 
-                display_board.show();
-                
-                // Handle input in main loop where window exists
-                int key = cv::waitKeyEx(30);
-                if (key != -1) {
-                    Command cmd(game_time_ms(), "", "", {});
-                    
-                    // Arrow keys controls (final: swap 8 and 2)
-                    if (key == 2424832) cmd = Command(game_time_ms(), "", "up", {});    // 4 -> Up
-                    else if (key == 2555904) cmd = Command(game_time_ms(), "", "down", {});  // 6 -> Down  
-                    else if (key == 2490368) cmd = Command(game_time_ms(), "", "left", {});  // 8 -> Left
-                    else if (key == 2621440) cmd = Command(game_time_ms(), "", "right", {}); // 2 -> Right
-                    else if (key == 13) cmd = Command(game_time_ms(), "", "select", {});  // Enter
-                    else if (key == 27) { // ESC
-                        return;
-                    }
-                    
-                    if (!cmd.type.empty()) {
-                        process_input(cmd);
-                    }
+                if (!cmd.type.empty()) {
+                    process_input(cmd);
                 }
             }
         }
@@ -230,6 +347,17 @@ void Game::process_input(const Command& cmd) {
                             // Update position map again before passing to piece
                             update_cell2piece_map();
                             piece->on_command(move_cmd, pos);
+                            
+                            // פרסום אירוע תזוזה
+                            bool isWhite = (piece->id.length() >= 2 && piece->id[1] == 'W');
+                            MoveEvent moveEvent(
+                                piece->id, 
+                                cellToChessNotation(selected_piece_pos_.first, selected_piece_pos_.second),
+                                cellToChessNotation(cursor_pos_.first, cursor_pos_.second),
+                                isWhite,
+                                game_time_ms()
+                            );
+                            eventManager_.publishMove(moveEvent);
                         }
                     }
                 } catch (const std::exception& e) {
@@ -254,8 +382,38 @@ void Game::resolve_collisions() {
     check_captures();
 }
 
-void Game::announce_win() const {
-    // Game end
+void Game::announce_win() {
+    // בדיקת מצב הזכייה ופרסום אירוע
+    if (is_win()) {
+        // ספירת מלכים לקביעת מנצח
+        bool whiteKingAlive = false;
+        bool blackKingAlive = false;
+        
+        for (const auto& piece : pieces) {
+            if (piece->id.length() >= 2 && piece->id[0] == 'K') {
+                if (piece->id[1] == 'W') whiteKingAlive = true;
+                else if (piece->id[1] == 'B') blackKingAlive = true;
+            }
+        }
+        
+        GameState winState;
+        std::string reason;
+        if (whiteKingAlive && !blackKingAlive) {
+            winState = GameState::WhiteWin;
+            reason = "Black king captured - White wins!";
+        } else if (blackKingAlive && !whiteKingAlive) {
+            winState = GameState::BlackWin;  
+            reason = "White king captured - Black wins!";
+        } else {
+            winState = GameState::Draw;
+            reason = "Both kings eliminated - Draw!";
+        }
+        
+        // פרסום אירוע זכייה
+        GameStateEvent winEvent(winState, currentGameState_, reason, game_time_ms());
+        eventManager_.publishGameState(winEvent);
+        currentGameState_ = winState;
+    }
 }
 
 void Game::validate() {
@@ -396,6 +554,36 @@ void Game::capture_piece(PiecePtr captured, PiecePtr captor) {
               << " captured by " << (captor ? captor->id : "NULL") << std::endl;
     
     if (captured && captor) {
+        // פרסום אירוע תפיסה לפני ביצוע התפיסה
+        bool capturerIsWhite = (captor->id.length() >= 2 && captor->id[1] == 'W');
+        auto capturedCell = captured->current_cell();
+        
+        // חישוב ערך הכלי שנתפס
+        int pieceValue = 1; // ערך בסיסי
+        if (captured->id.length() >= 1) {
+            char pieceType = captured->id[0];
+            switch(pieceType) {
+                case 'P': pieceValue = 1; break;  // רגלי
+                case 'R': pieceValue = 5; break;  // צריח
+                case 'N': pieceValue = 3; break;  // סוס
+                case 'B': pieceValue = 3; break;  // רץ
+                case 'Q': pieceValue = 9; break;  // מלכה
+                case 'K': pieceValue = 100; break; // מלך
+                default: pieceValue = 1;
+            }
+        }
+        
+        CaptureEvent captureEvent(
+            captor->id,
+            captured->id,
+            cellToChessNotation(capturedCell.first, capturedCell.second),
+            capturerIsWhite,
+            pieceValue,
+            game_time_ms()
+        );
+        eventManager_.publishCapture(captureEvent);
+        
+        // ביצוע התפיסה
         pieces.erase(std::remove(pieces.begin(), pieces.end(), captured), pieces.end());
         piece_by_id.erase(captured->id);
         // Update position map after capture
@@ -460,7 +648,7 @@ bool Game::is_move_valid(PiecePtr piece, const std::pair<int,int>& from, const s
     for (const auto& [cell, pieces_at_cell] : pos) {
         if (!pieces_at_cell.empty()) {
             occupied_cells.insert(cell);
-            std::cout << "OCCUPIED CELL: (" << cell.first << "," << cell.second << ") בה נמצא " << pieces_at_cell[0]->id << std::endl;
+            // std::cout << "OCCUPIED CELL: (" << cell.first << "," << cell.second << ") בה נמצא " << pieces_at_cell[0]->id << std::endl;
         }
     }
     
@@ -512,6 +700,96 @@ bool Game::are_same_color(PiecePtr piece1, PiecePtr piece2) {
     return (color1 == color2);
 }
 
+void Game::setupEventListeners() {
+    // רישום מאזינים לתזוזות
+    eventManager_.subscribeToMoves(&whiteMovesTracker_);
+    eventManager_.subscribeToMoves(&blackMovesTracker_);
+    eventManager_.subscribeToMoves(&voiceAnnouncer_);
+    
+    // רישום מאזינים לתפיסות 
+    eventManager_.subscribeToCaptures(&whiteScoreTracker_);
+    eventManager_.subscribeToCaptures(&blackScoreTracker_);
+    eventManager_.subscribeToCaptures(&voiceAnnouncer_);
+    
+    // רישום מאזינים למצב המשחק
+    eventManager_.subscribeToGameState(&voiceAnnouncer_);
+    
+    std::cout << "Event listeners initialized successfully!" << std::endl;
+}
+
+std::string Game::cellToChessNotation(int x, int y) {
+    char file = 'a' + y;  // y coordinate becomes file (a-h)
+    int rank = x + 1;     // x coordinate becomes rank (1-8)
+    return std::string(1, file) + std::to_string(rank);
+}
+
+void Game::drawGameInterface(ImgPtr background_img) {
+    if (!background_img) return;
+    
+    // Get moves from trackers
+    const auto& whiteMoves = whiteMovesTracker_.getAllMoves();
+    const auto& blackMoves = blackMovesTracker_.getAllMoves();
+    
+    // Get scores
+    int whiteScore = whiteScoreTracker_.getScore();
+    int blackScore = blackScoreTracker_.getScore();
+    
+    // Background dimensions (assuming 1024x768 or similar)
+    int bg_width = 1024;
+    int bg_height = 768;
+    
+    // Board will be in center (640x640)
+    int board_x = (bg_width - 640) / 2;  // Center horizontally
+    int board_y = (bg_height - 640) / 2; // Center vertically
+    
+    // White moves table (right side)
+    int white_table_x = board_x + 640 + 20;  // 20px margin from board
+    int white_table_y = board_y;
+    
+    // Black moves table (left side)  
+    int black_table_x = 20;  // 20px from left edge
+    int black_table_y = board_y;
+    
+    // Draw tables
+    drawMovesTable(background_img, white_table_x, white_table_y, whiteMoves, "White Moves", true);
+    drawMovesTable(background_img, black_table_x, black_table_y, blackMoves, "Black Moves", false);
+    
+    // Draw scores below tables
+    drawScore(background_img, white_table_x, white_table_y + 400, whiteScore, "White Score", true);
+    drawScore(background_img, black_table_x, black_table_y + 400, blackScore, "Black Score", false);
+}
+
+void Game::drawMovesTable(ImgPtr img, int x, int y, const std::vector<MoveEvent>& moves, const std::string& title, bool isWhite) {
+    if (!img) return;
+    
+    // Draw title - using put_text instead of cv::putText
+    img->put_text(title, x, y - 10, 0.8);
+    
+    // Draw moves (latest 15 moves)
+    int maxMoves = std::min(15, static_cast<int>(moves.size()));
+    int startIdx = std::max(0, static_cast<int>(moves.size()) - maxMoves);
+    
+    for (int i = 0; i < maxMoves; ++i) {
+        const auto& move = moves[startIdx + i];
+        std::string moveText = std::to_string(startIdx + i + 1) + ". " + 
+                              move.piece + " " + move.from + "->" + move.to;
+        
+        img->put_text(moveText, x, y + 30 + i * 25, 0.5);
+    }
+}
+
+void Game::drawScore(ImgPtr img, int x, int y, int score, const std::string& player, bool isWhite) {
+    if (!img) return;
+    
+    std::string scoreText = player + ": " + std::to_string(score) + " pts";
+    img->put_text(scoreText, x, y, 0.8);
+}
+
+ImgPtr Game::loadBackgroundImage(const std::string& pieces_root, ImgFactoryPtr img_factory) {
+    std::string bg_path = pieces_root + "background.jpg";
+    return img_factory->load(bg_path, {1024, 768}); // Standard game interface size
+}
+
 Game create_game(const std::string& pieces_root, ImgFactoryPtr img_factory) {
     // Load board image
     std::string board_img_path = pieces_root + "board.png";
@@ -519,6 +797,10 @@ Game create_game(const std::string& pieces_root, ImgFactoryPtr img_factory) {
     if (!board_img) {
         throw std::runtime_error("Failed to load board image: " + board_img_path);
     }
+    
+    // Load background image
+    std::string bg_img_path = pieces_root + "background.jpg";
+    auto background_img = img_factory->load(bg_img_path, {1024, 768});
     
     // Create board (8x8 chess board)
     Board board(80, 80, 8, 8, board_img);
@@ -533,5 +815,11 @@ Game create_game(const std::string& pieces_root, ImgFactoryPtr img_factory) {
     std::string board_csv_path = pieces_root + "board.csv";
     auto pieces = piece_factory.create_pieces_from_board_csv(board_csv_path);
     
-    return Game(pieces, board);
+    // Create game with background if available
+    if (background_img) {
+        return Game(pieces, board, background_img);
+    } else {
+        std::cout << "Warning: Background image not found, using board-only display" << std::endl;
+        return Game(pieces, board);
+    }
 }

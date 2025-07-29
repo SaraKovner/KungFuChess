@@ -27,6 +27,15 @@
 #include <condition_variable>
 #include <atomic>
 
+// Observer pattern for game events
+#include "../observer/headers/GameEventManager.hpp"
+#include "../observer/headers/GameStateEvent.hpp"
+#include "../observer/headers/WhiteMovesTable.hpp"
+#include "../observer/headers/BlackMovesTable.hpp"
+#include "../observer/headers/WhiteScoreTracker.hpp"
+#include "../observer/headers/BlackScoreTracker.hpp"
+#include "../observer/headers/VoiceAnnouncer.hpp"
+
 #if __has_include(<filesystem>)
 #include <filesystem>
 namespace fs = std::filesystem;
@@ -45,6 +54,7 @@ public:
 class Game {
 public:
     Game(std::vector<PiecePtr> pcs, Board board);
+    Game(std::vector<PiecePtr> pcs, Board board, ImgPtr background_img);
 
     // --- main public API ---
     int game_time_ms() const;
@@ -56,6 +66,9 @@ public:
     std::vector<PiecePtr> pieces;
     Board board;
     
+    // Background image for game interface
+    ImgPtr background_img_;
+    
     // helper for tests to inject commands
     void enqueue_command(const Command& cmd);
 
@@ -66,7 +79,7 @@ private:
     void update_cell2piece_map();
     void process_input(const Command& cmd);
     void resolve_collisions();
-    void announce_win() const;
+    void announce_win();
 
     void validate();
     bool is_win() const;
@@ -93,7 +106,22 @@ private:
 
     std::chrono::steady_clock::time_point start_tp;
     
+    // Game state tracking
+    GameState currentGameState_ = GameState::Paused;
+    
+    // Event management for observer pattern
+    GameEventManager eventManager_;
+    
+    // Event listeners
+    WhiteMovesTable whiteMovesTracker_;
+    BlackMovesTable blackMovesTracker_;
+    WhiteScoreTracker whiteScoreTracker_;
+    BlackScoreTracker blackScoreTracker_;
+    VoiceAnnouncer voiceAnnouncer_;
+    
     // Helper functions for user interaction
+    void setupEventListeners();
+    std::string cellToChessNotation(int x, int y);
     void handle_mouse_click(int x, int y);
     void handle_key_press(int key);
     void select_piece_at(int x, int y);
@@ -108,6 +136,12 @@ private:
     bool is_move_valid(PiecePtr piece, const std::pair<int,int>& from, const std::pair<int,int>& to);
     char get_piece_color(PiecePtr piece);
     bool are_same_color(PiecePtr piece1, PiecePtr piece2);
+    
+    // Visual display functions for move tables and scores
+    void drawGameInterface(ImgPtr background_img);
+    void drawMovesTable(ImgPtr img, int x, int y, const std::vector<MoveEvent>& moves, const std::string& title, bool isWhite);
+    void drawScore(ImgPtr img, int x, int y, int score, const std::string& player, bool isWhite);
+    ImgPtr loadBackgroundImage(const std::string& pieces_root, ImgFactoryPtr img_factory);
 };
 
 // Factory function to create game from pieces directory

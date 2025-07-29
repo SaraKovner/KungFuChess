@@ -9,11 +9,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Source file collection
 # ---------------------------------------------------------------------
 file(GLOB_RECURSE ALL_CPP "src/*.cpp")
+file(GLOB_RECURSE OBSERVER_CPP "observer/src/*.cpp")
 file(GLOB_RECURSE HEADERS  "src/*.hpp")
 
 # Separate the program entry point (main.cpp)
 set(MAIN_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
-set(SOURCES ${ALL_CPP})
+set(SOURCES ${ALL_CPP} ${OBSERVER_CPP})
 list(REMOVE_ITEM SOURCES ${MAIN_SRC})
 
 # ---------------------------------------------------------------------
@@ -37,13 +38,15 @@ target_include_directories(kungfu_chess_lib PRIVATE
     ${OPENCV_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/src/img
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/json)
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/json
+    ${CMAKE_CURRENT_SOURCE_DIR}/observer/headers)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${OPENCV_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/src/img
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/json)
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/json
+    ${CMAKE_CURRENT_SOURCE_DIR}/observer/headers)
 
 target_link_directories(kungfu_chess_lib PRIVATE ${OPENCV_LIB_DIR})
 target_link_directories(${PROJECT_NAME} PRIVATE ${OPENCV_LIB_DIR})
