@@ -23,14 +23,6 @@ void WhiteScoreTracker::onNotify(const CaptureEvent& event) {
                   << " at " << event.position 
                   << " (++" << points << " points, total: " << score_ << ")" << std::endl;
     }
-    // If black captured white piece - subtract points
-    else if (!event.capturerIsWhite && !event.capturingPiece.empty()) {
-        int points = event.scoreValue;
-        score_ -= points;
-        
-        std::cout << "Loss: Black captured white piece at " << event.position 
-                  << " (--" << points << " points, total: " << score_ << ")" << std::endl;
-    }
 }
 
 int WhiteScoreTracker::getScore() const {
