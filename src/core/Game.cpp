@@ -109,7 +109,7 @@ void Game::run(int num_iterations, bool is_with_graphics) {
     
     // פרסום תחילת משחק
     GameStateEvent startEvent(GameState::Playing, GameState::Paused, "Game started", game_time_ms());
-    eventManager_.publishGameState(startEvent);
+    eventManager_.publish(startEvent, "gamestate");
     currentGameState_ = GameState::Playing;
     
     // Handle game state change for message display
@@ -561,7 +561,7 @@ void Game::process_input(int player_id, const std::string& cmd_type) {
                                 isWhite,
                                 game_time_ms()
                             );
-                            eventManager_.publishMove(moveEvent);
+                            eventManager_.publish(moveEvent, "move");
                         }
                     }
                 } catch (const std::exception& e) {
@@ -615,7 +615,7 @@ void Game::announce_win() {
         
         // פרסום אירוע זכייה
         GameStateEvent winEvent(winState, currentGameState_, reason, game_time_ms());
-        eventManager_.publishGameState(winEvent);
+        eventManager_.publish(winEvent, "gamestate");
         currentGameState_ = winState;
         
         // Handle game state change for message display
@@ -799,7 +799,7 @@ void Game::capture_piece(PiecePtr captured, PiecePtr captor) {
             pieceValue,
             game_time_ms()
         );
-        eventManager_.publishCapture(captureEvent);
+        eventManager_.publish(captureEvent, "capture");
         
         // ביצוע התפיסה
         pieces.erase(std::remove(pieces.begin(), pieces.end(), captured), pieces.end());
@@ -920,19 +920,19 @@ bool Game::are_same_color(PiecePtr piece1, PiecePtr piece2) {
 
 void Game::setupEventListeners() {
     // רישום מאזינים לתזוזות
-    eventManager_.subscribeToMoves(&whiteMovesTracker_);
-    eventManager_.subscribeToMoves(&blackMovesTracker_);
-    eventManager_.subscribeToMoves(&voiceAnnouncer_);
+    eventManager_.subscribe(&whiteMovesTracker_, "move");
+    eventManager_.subscribe(&blackMovesTracker_, "move");
+    eventManager_.subscribe(&voiceAnnouncer_, "move");
     
     // רישום מאזינים לתפיסות 
-    eventManager_.subscribeToCaptures(&whiteScoreTracker_);
-    eventManager_.subscribeToCaptures(&blackScoreTracker_);
-    eventManager_.subscribeToCaptures(&voiceAnnouncer_);
-    eventManager_.subscribeToCaptures(&soundManager_);
+    eventManager_.subscribe(&whiteScoreTracker_, "capture");
+    eventManager_.subscribe(&blackScoreTracker_, "capture");
+    eventManager_.subscribe(&voiceAnnouncer_, "capture");
+    eventManager_.subscribe(&soundManager_, "capture");
     
     // רישום מאזינים למצב המשחק
-    eventManager_.subscribeToGameState(&voiceAnnouncer_);
-    eventManager_.subscribeToGameState(&soundManager_);
+    eventManager_.subscribe(&voiceAnnouncer_, "gamestate");
+    eventManager_.subscribe(&soundManager_, "gamestate");
     
     std::cout << "Event listeners initialized successfully!" << std::endl;
 }

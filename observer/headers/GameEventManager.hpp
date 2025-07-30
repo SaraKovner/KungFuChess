@@ -1,46 +1,47 @@
 #pragma once
+#include <map>
+#include <string>
 #include "Subject.hpp"
-#include "MoveEvent.hpp"
-#include "CaptureEvent.hpp"
-#include "GameStateEvent.hpp"
-#include "TimeEvent.hpp"
+#include "BaseEvent.hpp"
 
 /**
- * Central manager for all game events
- * Combines professional PubSub approach with simple EventDispatcher
+ * Flexible GameEventManager with Map - maximum flexibility
  */
 class GameEventManager {
 private:
-    // Separate subjects for each event type - type safe and professional
-    Subject<MoveEvent> moveSubject_;
-    Subject<CaptureEvent> captureSubject_;
-    Subject<GameStateEvent> stateSubject_;
-    Subject<TimeEvent> timeSubject_;
+    std::map<std::string, Subject> subjects_;
     
 public:
-    // === Move subscription ===
-    void subscribeToMoves(Observer<MoveEvent>* observer);
-    void unsubscribeFromMoves(Observer<MoveEvent>* observer);
-    void publishMove(const MoveEvent& event);
+    /**
+     * Subscribe observer to specific event type
+     */
+    void subscribe(Observer* observer, const std::string& eventType) {
+        subjects_[eventType].subscribe(observer);
+    }
     
-    // === Capture subscription ===
-    void subscribeToCaptures(Observer<CaptureEvent>* observer);
-    void unsubscribeFromCaptures(Observer<CaptureEvent>* observer);
-    void publishCapture(const CaptureEvent& event);
+    /**
+     * Unsubscribe observer from specific event type
+     */
+    void unsubscribe(Observer* observer, const std::string& eventType) {
+        if (subjects_.find(eventType) != subjects_.end()) {
+            subjects_[eventType].unsubscribe(observer);
+        }
+    }
     
-    // === Game state subscription ===
-    void subscribeToGameState(Observer<GameStateEvent>* observer);
-    void unsubscribeFromGameState(Observer<GameStateEvent>* observer);
-    void publishGameState(const GameStateEvent& event);
+    /**
+     * Publish event to all subscribers of that event type
+     */
+    void publish(const BaseEvent& event, const std::string& eventType) {
+        if (subjects_.find(eventType) != subjects_.end()) {
+            subjects_[eventType].notify(event);
+        }
+    }
     
-    // === Time subscription ===
-    void subscribeToTime(Observer<TimeEvent>* observer);
-    void unsubscribeFromTime(Observer<TimeEvent>* observer);
-    void publishTime(const TimeEvent& event);
-    
-    // === Statistics ===
-    size_t getMoveObserverCount() const;
-    size_t getCaptureObserverCount() const;
-    size_t getStateObserverCount() const;
-    size_t getTimeObserverCount() const;
+    /**
+     * Get number of observers for specific event type
+     */
+    size_t getObserverCount(const std::string& eventType) const {
+        auto it = subjects_.find(eventType);
+        return (it != subjects_.end()) ? it->second.getObserverCount() : 0;
+    }
 };

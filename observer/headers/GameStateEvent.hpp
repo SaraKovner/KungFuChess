@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include "BaseEvent.hpp"
 
 /**
  * Game state change event
@@ -12,7 +13,7 @@ enum class GameState {
     Paused
 };
 
-struct GameStateEvent {
+struct GameStateEvent : public BaseEvent {
     GameState newState;         // New state
     GameState previousState;    // Previous state
     std::string reason;         // Reason for change

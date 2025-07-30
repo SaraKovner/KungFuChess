@@ -2,21 +2,22 @@
 #include "Observer.hpp"
 #include "CaptureEvent.hpp"
 #include "GameStateEvent.hpp"
+#include "BaseEvent.hpp"
 #include <windows.h>
 #include <string>
 
-class SoundManager : public Observer<CaptureEvent>, public Observer<GameStateEvent> {
+class SoundManager : public Observer {
 public:
     SoundManager();
     
-    void onNotify(const CaptureEvent& event) override;
-    void onNotify(const GameStateEvent& event) override;
+    void onNotify(const BaseEvent& event) override;
     
     // Made public for testing
     virtual void playVictorySound();
     virtual void playWavFile(const std::string& filename);
 
 private:
-    
+    void handleCapture(const CaptureEvent& event);
+    void handleGameState(const GameStateEvent& event);
     std::string soundsPath_;
 };

@@ -2,32 +2,31 @@
 #include <vector>
 #include <algorithm>
 #include "Observer.hpp"
+#include "BaseEvent.hpp"
 
 /**
- * Advanced Subject with template - manages list of listeners for specific event type
- * T = event type
+ * Simple Subject - manages list of observers for events
  */
-template <typename T>
 class Subject {
 private:
-    std::vector<Observer<T>*> observers_;
+    std::vector<Observer*> observers_;
 
 public:
     virtual ~Subject() = default;
 
     /**
-     * Add new listener
+     * Add new observer
      */
-    void subscribe(Observer<T>* observer) {
+    void subscribe(Observer* observer) {
         if (observer && std::find(observers_.begin(), observers_.end(), observer) == observers_.end()) {
             observers_.push_back(observer);
         }
     }
 
     /**
-     * Remove listener
+     * Remove observer
      */
-    void unsubscribe(Observer<T>* observer) {
+    void unsubscribe(Observer* observer) {
         observers_.erase(
             std::remove(observers_.begin(), observers_.end(), observer),
             observers_.end()
@@ -35,9 +34,9 @@ public:
     }
 
     /**
-     * Send message to all listeners
+     * Notify all observers
      */
-    void notify(const T& event) {
+    void notify(const BaseEvent& event) {
         for (auto* observer : observers_) {
             if (observer) {
                 observer->onNotify(event);
@@ -46,7 +45,7 @@ public:
     }
 
     /**
-     * Number of registered listeners
+     * Number of registered observers
      */
     size_t getObserverCount() const {
         return observers_.size();

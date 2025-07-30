@@ -18,60 +18,60 @@ TEST_CASE("GameEventManager - Full Coverage") {
     
     SECTION("Subscribe to moves") {
         REQUIRE_NOTHROW([&]() {
-            manager.subscribeToMoves(&whiteMoves);
-            manager.subscribeToMoves(&blackMoves);
-            manager.subscribeToMoves(&announcer);
+            manager.subscribe(&whiteMoves, "move");
+            manager.subscribe(&blackMoves, "move");
+            manager.subscribe(&announcer, "move");
         }());
     }
     
     SECTION("Subscribe to captures") {
         REQUIRE_NOTHROW([&]() {
-            manager.subscribeToCaptures(&whiteScore);
-            manager.subscribeToCaptures(&blackScore);
-            manager.subscribeToCaptures(&announcer);
-            manager.subscribeToCaptures(&soundMgr);
+            manager.subscribe(&whiteScore, "capture");
+            manager.subscribe(&blackScore, "capture");
+            manager.subscribe(&announcer, "capture");
+            manager.subscribe(&soundMgr, "capture");
         }());
     }
     
     SECTION("Subscribe to game state") {
         REQUIRE_NOTHROW([&]() {
-            manager.subscribeToGameState(&announcer);
-            manager.subscribeToGameState(&soundMgr);
+            manager.subscribe(&announcer, "gamestate");
+            manager.subscribe(&soundMgr, "gamestate");
         }());
     }
     
     SECTION("Publish move events") {
-        manager.subscribeToMoves(&whiteMoves);
-        manager.subscribeToMoves(&blackMoves);
+        manager.subscribe(&whiteMoves, "move");
+        manager.subscribe(&blackMoves, "move");
         
         REQUIRE_NOTHROW([&]() {
             MoveEvent whiteMove("PW1", "e2", "e4", true, 1000);
             MoveEvent blackMove("PB1", "e7", "e5", false, 2000);
             
-            manager.publishMove(whiteMove);
-            manager.publishMove(blackMove);
+            manager.publish(whiteMove, "move");
+            manager.publish(blackMove, "move");
         }());
     }
     
     SECTION("Publish capture events") {
-        manager.subscribeToCaptures(&whiteScore);
-        manager.subscribeToCaptures(&blackScore);
+        manager.subscribe(&whiteScore, "capture");
+        manager.subscribe(&blackScore, "capture");
         
         REQUIRE_NOTHROW([&]() {
             CaptureEvent capture("QW1", "QB1", "d4", true, 9, 3000);
-            manager.publishCapture(capture);
+            manager.publish(capture, "capture");
         }());
     }
     
     SECTION("Publish game state events") {
-        manager.subscribeToGameState(&announcer);
+        manager.subscribe(&announcer, "gamestate");
         
         REQUIRE_NOTHROW([&]() {
             GameStateEvent startEvent(GameState::Playing, GameState::Paused, "Game started", 0);
             GameStateEvent winEvent(GameState::WhiteWin, GameState::Playing, "White wins!", 10000);
             
-            manager.publishGameState(startEvent);
-            manager.publishGameState(winEvent);
+            manager.publish(startEvent, "gamestate");
+            manager.publish(winEvent, "gamestate");
         }());
     }
 }

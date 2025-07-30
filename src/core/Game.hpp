@@ -27,7 +27,7 @@
 #include <condition_variable>
 #include <atomic>
 
-// Observer pattern for game events
+// Observer pattern for game events - Updated architecture
 #include "../observer/headers/GameEventManager.hpp"
 #include "../observer/headers/GameStateEvent.hpp"
 #include "../observer/headers/WhiteMovesTable.hpp"

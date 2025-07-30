@@ -1,10 +1,11 @@
 #pragma once
 #include <string>
+#include "BaseEvent.hpp"
 
 /**
  * Piece move event in the game
  */
-struct MoveEvent {
+struct MoveEvent : public BaseEvent {
     std::string piece;        // Piece type (P=pawn, R=rook, etc.)
     std::string from;         // Source position (e.g. "e2")
     std::string to;           // Target position (e.g. "e4")

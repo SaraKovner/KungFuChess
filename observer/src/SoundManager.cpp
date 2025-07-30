@@ -6,7 +6,16 @@ SoundManager::SoundManager() {
     soundsPath_ = "assets/sounds/";
 }
 
-void SoundManager::onNotify(const CaptureEvent& event) {
+void SoundManager::onNotify(const BaseEvent& event) {
+    if (auto* captureEvent = dynamic_cast<const CaptureEvent*>(&event)) {
+        handleCapture(*captureEvent);
+    }
+    else if (auto* gameEvent = dynamic_cast<const GameStateEvent*>(&event)) {
+        handleGameState(*gameEvent);
+    }
+}
+
+void SoundManager::handleCapture(const CaptureEvent& event) {
     std::cout << "🔊 Playing capture sound for: " << event.capturingPiece 
               << " captures " << event.capturedPiece << std::endl;
     
@@ -17,7 +26,7 @@ void SoundManager::onNotify(const CaptureEvent& event) {
     }
 }
 
-void SoundManager::onNotify(const GameStateEvent& event) {
+void SoundManager::handleGameState(const GameStateEvent& event) {
     if (event.newState == GameState::WhiteWin || event.newState == GameState::BlackWin || event.newState == GameState::Draw) {
         std::cout << "🎉 Playing victory sound!" << std::endl;
         playVictorySound();

@@ -1,9 +1,10 @@
 #pragma once
+#include "BaseEvent.hpp"
 
 /**
  * Time update event in the game
  */
-struct TimeEvent {
+struct TimeEvent : public BaseEvent {
     double whiteTimeLeft;       // Time left for white (in seconds)
     double blackTimeLeft;       // Time left for black (in seconds)
     double gameTime;           // Total game time

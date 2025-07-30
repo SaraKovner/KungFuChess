@@ -1,10 +1,11 @@
 #pragma once
 #include <string>
+#include "BaseEvent.hpp"
 
 /**
  * Piece capture event in the game
  */
-struct CaptureEvent {
+struct CaptureEvent : public BaseEvent {
     std::string capturingPiece;  // The piece that captures
     std::string capturedPiece;   // The piece that is captured
     std::string position;        // Capture position

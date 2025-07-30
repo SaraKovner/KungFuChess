@@ -1,10 +1,9 @@
 #pragma once
+#include "BaseEvent.hpp"
 
 /**
- * Base Observer interface with template - professional and flexible
- * T = type of event that the listener receives
+ * Simple Observer interface - receives BaseEvent and handles type checking internally
  */
-template <typename T>
 class Observer {
 public:
     virtual ~Observer() = default;
@@ -13,5 +12,5 @@ public:
      * Called when an event occurs
      * @param event The event that occurred
      */
-    virtual void onNotify(const T& event) = 0;
+    virtual void onNotify(const BaseEvent& event) = 0;
 };

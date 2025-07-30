@@ -2,7 +2,13 @@
 #include <iostream>
 #include <iomanip>
 
-void WhiteMovesTable::onNotify(const MoveEvent& event) {
+void WhiteMovesTable::onNotify(const BaseEvent& event) {
+    if (auto* moveEvent = dynamic_cast<const MoveEvent*>(&event)) {
+        handleMove(*moveEvent);
+    }
+}
+
+void WhiteMovesTable::handleMove(const MoveEvent& event) {
     // Only white moves
     if (event.isWhite) {
         moves_.push_back(event);

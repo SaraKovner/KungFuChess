@@ -15,8 +15,19 @@ std::string VoiceAnnouncer::getPlayerName(bool isWhite) const {
     return isWhite ? "White" : "Black";
 }
 
-// Listen to moves
-void VoiceAnnouncer::onNotify(const MoveEvent& event) {
+void VoiceAnnouncer::onNotify(const BaseEvent& event) {
+    if (auto* moveEvent = dynamic_cast<const MoveEvent*>(&event)) {
+        announceMove(*moveEvent);
+    }
+    else if (auto* captureEvent = dynamic_cast<const CaptureEvent*>(&event)) {
+        announceCapture(*captureEvent);
+    }
+    else if (auto* gameEvent = dynamic_cast<const GameStateEvent*>(&event)) {
+        announceGameState(*gameEvent);
+    }
+}
+
+void VoiceAnnouncer::announceMove(const MoveEvent& event) {
     std::string player = getPlayerName(event.isWhite);
     std::string piece = getPieceNameEnglish(event.piece);
     
@@ -24,8 +35,7 @@ void VoiceAnnouncer::onNotify(const MoveEvent& event) {
               << " from " << event.from << " to " << event.to << std::endl;
 }
 
-// Listen to captures
-void VoiceAnnouncer::onNotify(const CaptureEvent& event) {
+void VoiceAnnouncer::announceCapture(const CaptureEvent& event) {
     std::string capturer = getPlayerName(event.capturerIsWhite);
     std::string capturingPiece = getPieceNameEnglish(event.capturingPiece);
     std::string capturedPiece = getPieceNameEnglish(event.capturedPiece);
@@ -42,8 +52,7 @@ void VoiceAnnouncer::onNotify(const CaptureEvent& event) {
     }
 }
 
-// Listen to state changes
-void VoiceAnnouncer::onNotify(const GameStateEvent& event) {
+void VoiceAnnouncer::announceGameState(const GameStateEvent& event) {
     switch (event.newState) {
         case GameState::WhiteWin:
             std::cout << "Victory: White wins! Congratulations!" << std::endl;

@@ -3,26 +3,22 @@
 #include "MoveEvent.hpp"
 #include "CaptureEvent.hpp"
 #include "GameStateEvent.hpp"
+#include "BaseEvent.hpp"
 #include <string>
 
 /**
  * Voice and visual announcements system for the game
  * Listens to moves, captures and state changes
  */
-class VoiceAnnouncer : public Observer<MoveEvent>, 
-                      public Observer<CaptureEvent>, 
-                      public Observer<GameStateEvent> {
+class VoiceAnnouncer : public Observer {
 private:
     std::string getPieceNameEnglish(const std::string& piece) const;
     std::string getPlayerName(bool isWhite) const;
     
+    void announceMove(const MoveEvent& event);
+    void announceCapture(const CaptureEvent& event);
+    void announceGameState(const GameStateEvent& event);
+    
 public:
-    // Listen to moves
-    void onNotify(const MoveEvent& event) override;
-    
-    // Listen to captures
-    void onNotify(const CaptureEvent& event) override;
-    
-    // Listen to state changes
-    void onNotify(const GameStateEvent& event) override;
+    void onNotify(const BaseEvent& event) override;
 };

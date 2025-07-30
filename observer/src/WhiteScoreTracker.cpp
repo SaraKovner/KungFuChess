@@ -13,7 +13,15 @@ int WhiteScoreTracker::getPieceValue(const std::string& piece) const {
     return 0;
 }
 
-void WhiteScoreTracker::onNotify(const CaptureEvent& event) {
+void WhiteScoreTracker::onNotify(const BaseEvent& event) {
+    // Check if this is a capture event
+    if (auto* captureEvent = dynamic_cast<const CaptureEvent*>(&event)) {
+        handleCapture(*captureEvent);
+    }
+    // Other events are ignored
+}
+
+void WhiteScoreTracker::handleCapture(const CaptureEvent& event) {
     // If white captured black piece - add points
     if (event.capturerIsWhite && !event.capturedPiece.empty()) {
         int points = event.scoreValue;
