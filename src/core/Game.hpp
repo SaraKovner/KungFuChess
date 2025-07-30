@@ -1,5 +1,15 @@
 #pragma once
-
+#include "../graphics/img/ImgFactory.hpp"
+#include "Common.hpp"
+#include "../graphics/img/OpenCvImg.hpp"
+#include "../network/NetworkInterface.hpp"
+#include <chrono>
+#include <thread>
+#include <queue>
+#include <algorithm>
+#include <unordered_map>
+#include <iostream>
+#include <opencv2/opencv.hpp>
 #include "Board.hpp"
 #include "../game_logic/PieceFactory.hpp"
 #include "../ui/Command.hpp"
@@ -13,15 +23,6 @@
 #include <fstream>
 #include <sstream>
 #include "../graphics/GraphicsFactory.hpp"
-#include "Common.hpp"
-#include "../graphics/img/OpenCvImg.hpp"
-#include <chrono>
-#include <thread>
-#include <queue>
-#include <algorithm>
-#include <unordered_map>
-#include <iostream>
-#include <opencv2/opencv.hpp>
 // Threading support from CTD25_1
 #include <mutex>
 #include <condition_variable>
@@ -63,6 +64,16 @@ public:
 
     // Mirror Python run() behaviour with enhanced threading support
     void run(int num_iterations = -1, bool is_with_graphics = true);
+    
+    // Network interface for multiplayer
+    void setNetworkInterface(NetworkInterface* network);
+    
+    // Network move handling
+    void applyNetworkMove(const std::string& move);
+    void broadcastMove(const std::string& move);
+    
+    // Server-side input processing (public for GameServer)
+    void processServerInput(int player_id, const std::string& cmd_type);
 
     std::vector<PiecePtr> pieces;
     Board board;
@@ -79,6 +90,7 @@ private:
     void run_game_loop(int num_iterations, bool is_with_graphics);
     void update_cell2piece_map();
     void process_input(int player_id, const std::string& cmd_type);
+    void process_input_local(int player_id, const std::string& cmd_type);  // מעבד קלט מקומית
     void resolve_collisions();
     void announce_win();
 
@@ -135,6 +147,9 @@ private:
     BlackScoreTracker blackScoreTracker_;
     VoiceAnnouncer voiceAnnouncer_;
     SoundManager soundManager_;
+    
+    // Network interface for multiplayer
+    NetworkInterface* network_interface_ = nullptr;
     
     // Helper functions for user interaction
     void setupEventListeners();

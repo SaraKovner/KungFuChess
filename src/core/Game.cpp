@@ -100,6 +100,10 @@ int Game::game_time_ms() const {
         std::chrono::steady_clock::now() - start_tp).count());
 }
 
+void Game::setNetworkInterface(NetworkInterface* network) {
+    network_interface_ = network;
+}
+
 Board Game::clone_board() const {
     return board.clone();
 }
@@ -500,6 +504,18 @@ void Game::update_cell2piece_map() {
 }
 
 void Game::process_input(int player_id, const std::string& cmd_type) {
+    // אם יש לנו network interface, שולחים את הקלט לשרת במקום לעבד מקומית
+    if (network_interface_) {
+        std::string input_message = "INPUT:" + std::to_string(player_id) + ":" + cmd_type;
+        network_interface_->sendMove(input_message);
+        return;
+    }
+    
+    // אם אין network interface, מעבדים מקומית (למשחק מקומי)
+    process_input_local(player_id, cmd_type);
+}
+
+void Game::process_input_local(int player_id, const std::string& cmd_type) {
     std::lock_guard<std::mutex> lock(input_mutex_);
     
     // Get player-specific state
@@ -662,6 +678,17 @@ void Game::handle_mouse_click(int x, int y) {
             if (is_move_valid(selected_piece_player1_, start_cell, {x, y})) {
                 std::vector<std::pair<int,int>> move_params = {start_cell, {x, y}};
                 Command move_cmd(game_time_ms(), selected_piece_player1_->id, "move", move_params, 1);
+                
+                // Send move to network if connected
+                if (network_interface_) {
+                    std::string move_str = std::to_string(start_cell.first) + "," + 
+                                         std::to_string(start_cell.second) + ":" + 
+                                         std::to_string(x) + "," + std::to_string(y) + 
+                                         ":" + selected_piece_player1_->id;
+                    network_interface_->sendMove(move_str);
+                    std::cout << "📤 Sent move to network: " << move_str << std::endl;
+                }
+                
                 enqueue_command(move_cmd);
             }
         }
@@ -697,6 +724,12 @@ void Game::confirm_move() {
             std::vector<std::pair<int,int>> move_params = {start_cell, cursor_pos_player1_};
             Command move_cmd(game_time_ms(), selected_piece_player1_->id, "move", move_params, 1);
             enqueue_command(move_cmd);
+            
+            // Broadcast move to network
+            std::string network_move = selected_piece_player1_->id + ":" + 
+                                     std::to_string(start_cell.first) + "," + std::to_string(start_cell.second) + ":" +
+                                     std::to_string(cursor_pos_player1_.first) + "," + std::to_string(cursor_pos_player1_.second);
+            broadcastMove(network_move);
         }
     }
     cancel_selection();
@@ -1194,4 +1227,63 @@ void Game::onGameStateChanged(const GameStateEvent& event) {
         std::string reasonMessage = currentMessage_ + " - " + event.reason;
         showMessage(reasonMessage, messageDuration_);
     }
+}
+
+// Network move handling functions
+void Game::broadcastMove(const std::string& move) {
+    if (network_interface_) {
+        std::cout << "🌐 Broadcasting move: " << move << std::endl;
+        network_interface_->sendMove(move);
+    }
+}
+
+void Game::applyNetworkMove(const std::string& move) {
+    std::cout << "🌐 Applying network move: " << move << std::endl;
+    
+    // Parse move format: "piece_id:from_x,from_y:to_x,to_y"
+    size_t first_colon = move.find(':');
+    size_t second_colon = move.find(':', first_colon + 1);
+    
+    if (first_colon == std::string::npos || second_colon == std::string::npos) {
+        std::cerr << "❌ Invalid move format: " << move << std::endl;
+        return;
+    }
+    
+    std::string piece_id = move.substr(0, first_colon);
+    std::string from_pos = move.substr(first_colon + 1, second_colon - first_colon - 1);
+    std::string to_pos = move.substr(second_colon + 1);
+    
+    // Parse from position
+    size_t comma = from_pos.find(',');
+    if (comma == std::string::npos) {
+        std::cerr << "❌ Invalid from position: " << from_pos << std::endl;
+        return;
+    }
+    int from_x = std::stoi(from_pos.substr(0, comma));
+    int from_y = std::stoi(from_pos.substr(comma + 1));
+    
+    // Parse to position
+    comma = to_pos.find(',');
+    if (comma == std::string::npos) {
+        std::cerr << "❌ Invalid to position: " << to_pos << std::endl;
+        return;
+    }
+    int to_x = std::stoi(to_pos.substr(0, comma));
+    int to_y = std::stoi(to_pos.substr(comma + 1));
+    
+    // Find the piece and apply the move
+    auto piece = find_piece_by_id(piece_id);
+    if (piece) {
+        std::vector<std::pair<int,int>> move_params = {{from_x, from_y}, {to_x, to_y}};
+        Command move_cmd(game_time_ms(), piece_id, "move", move_params, 1);
+        enqueue_command(move_cmd);
+        std::cout << "✅ Applied move for piece " << piece_id << " from (" << from_x << "," << from_y << ") to (" << to_x << "," << to_y << ")" << std::endl;
+    } else {
+        std::cerr << "❌ Piece not found: " << piece_id << std::endl;
+    }
+}
+
+// Server-side input processing (calls local processing without network)
+void Game::processServerInput(int player_id, const std::string& cmd_type) {
+    process_input_local(player_id, cmd_type);
 }

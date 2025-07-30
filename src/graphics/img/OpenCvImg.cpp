@@ -11,11 +11,12 @@ struct OpenCvImg::Impl {
 	cv::Mat mat;
 };
 
-OpenCvImg::OpenCvImg() : impl(std::make_unique<Impl>()) {}
+OpenCvImg::OpenCvImg() : impl(std::make_unique<Impl>()), window_name_("KungFu Chess") {}
+OpenCvImg::OpenCvImg(const std::string& window_name) : impl(std::make_unique<Impl>()), window_name_(window_name) {}
 OpenCvImg::~OpenCvImg() = default;
 ImgPtr OpenCvImg::clone() const
 {
-	auto res = std::make_shared<OpenCvImg>();
+	auto res = std::make_shared<OpenCvImg>(window_name_);
 	res->impl->mat = this->impl->mat.clone();
 	return res;
 }
@@ -83,8 +84,8 @@ void OpenCvImg::put_text(const std::string& txt, int x, int y, double font_size)
 
 void OpenCvImg::show() const {
 	if (impl->mat.empty()) return;
-	cv::namedWindow("KungFu Chess", cv::WINDOW_AUTOSIZE);
-	cv::imshow("KungFu Chess", impl->mat);
+	cv::namedWindow(window_name_, cv::WINDOW_AUTOSIZE);
+	cv::imshow(window_name_, impl->mat);
 	cv::waitKey(1); // Just refresh the window
 }
 

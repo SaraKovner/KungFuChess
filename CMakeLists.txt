@@ -10,11 +10,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # ---------------------------------------------------------------------
 file(GLOB_RECURSE ALL_CPP "src/*.cpp")
 file(GLOB_RECURSE OBSERVER_CPP "observer/src/*.cpp")
+file(GLOB_RECURSE NETWORK_CPP "src/network/*.cpp")
 file(GLOB_RECURSE HEADERS  "src/*.hpp")
 
 # Separate the program entry point (main.cpp)
 set(MAIN_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
-set(SOURCES ${ALL_CPP} ${OBSERVER_CPP})
+set(SOURCES ${ALL_CPP} ${OBSERVER_CPP} ${NETWORK_CPP})
 list(REMOVE_ITEM SOURCES ${MAIN_SRC})
 
 # ---------------------------------------------------------------------
@@ -23,10 +24,18 @@ list(REMOVE_ITEM SOURCES ${MAIN_SRC})
 add_library(kungfu_chess_lib STATIC ${SOURCES} ${HEADERS})
 
 # ---------------------------------------------------------------------
-# Executable – small wrapper that links against the core library
+# Executables – server and client
 # ---------------------------------------------------------------------
+# Original local game (keep for testing)
 add_executable(${PROJECT_NAME} ${MAIN_SRC})
 target_link_libraries(${PROJECT_NAME} PRIVATE kungfu_chess_lib)
+
+# Network-based server and client
+add_executable(KungFuChess_Server src/main_server.cpp)
+add_executable(KungFuChess_Client src/main_client.cpp)
+
+target_link_libraries(KungFuChess_Server PRIVATE kungfu_chess_lib)
+target_link_libraries(KungFuChess_Client PRIVATE kungfu_chess_lib)
 
 # Set OpenCV paths
 set(OPENCV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/OpenCV_451")
@@ -42,6 +51,7 @@ target_include_directories(kungfu_chess_lib PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/graphics/img
     ${CMAKE_CURRENT_SOURCE_DIR}/src/game_logic
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/network
     ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/json
     ${CMAKE_CURRENT_SOURCE_DIR}/observer/headers)
 
