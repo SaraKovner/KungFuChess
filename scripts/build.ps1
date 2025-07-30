@@ -1,9 +1,9 @@
 Write-Host "Building KFC Merged Project..." -ForegroundColor Green
 
-if (!(Test-Path "../build")) {
-    New-Item -ItemType Directory -Name "../build"
+if (!(Test-Path "build")) {
+    New-Item -ItemType Directory -Name "build"
 }
-Set-Location "../build"
+Set-Location "build"
 
 # Clean any previous build cache
 if (Test-Path "CMakeCache.txt") { Remove-Item "CMakeCache.txt" }

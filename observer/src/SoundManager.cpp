@@ -3,7 +3,7 @@
 #include <filesystem>
 
 SoundManager::SoundManager() {
-    soundsPath_ = "../assets/sounds/";
+    soundsPath_ = "assets/sounds/";
 }
 
 void SoundManager::onNotify(const CaptureEvent& event) {
@@ -13,7 +13,7 @@ void SoundManager::onNotify(const CaptureEvent& event) {
     if (event.capturerIsWhite) {
         playWavFile("white_capture.wav");
     } else {
-        playWavFile("black_capture.wav");
+        playWavFile("black_capture.WAV");
     }
 }
 

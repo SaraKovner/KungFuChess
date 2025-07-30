@@ -2,9 +2,9 @@ Write-Host "Running KFC Merged Game..." -ForegroundColor Green
 
 # Try different build locations
 $buildPaths = @(
-    "../build\Release\KungFuChess.exe",
-    "../build\Debug\KungFuChess.exe", 
-    "../build\KungFuChess.exe"
+    "build\Release\KungFuChess.exe",
+    "build\Debug\KungFuChess.exe", 
+    "build\KungFuChess.exe"
 )
 
 $found = $false

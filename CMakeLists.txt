@@ -29,7 +29,7 @@ add_executable(${PROJECT_NAME} ${MAIN_SRC})
 target_link_libraries(${PROJECT_NAME} PRIVATE kungfu_chess_lib)
 
 # Set OpenCV paths
-set(OPENCV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/OpenCV_451")
+set(OPENCV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/OpenCV_451")
 set(OPENCV_INCLUDE_DIR "${OPENCV_DIR}/include")
 set(OPENCV_LIB_DIR "${OPENCV_DIR}/bin")
 
