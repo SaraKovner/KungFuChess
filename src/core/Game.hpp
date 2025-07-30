@@ -78,7 +78,7 @@ private:
     void start_user_input_thread();
     void run_game_loop(int num_iterations, bool is_with_graphics);
     void update_cell2piece_map();
-    void process_input(const Command& cmd);
+    void process_input(int player_id, const std::string& cmd_type);
     void resolve_collisions();
     void announce_win();
 
@@ -98,12 +98,21 @@ private:
     std::mutex positions_mutex_;
     std::mutex input_mutex_;
     
-    // Selected piece for user interaction
-    PiecePtr selected_piece_ = nullptr;
-    std::pair<int, int> cursor_pos_ = {0, 0};
-    std::pair<int, int> selected_piece_pos_ = {-1, -1};
-    bool is_selecting_target_ = false;
-    int current_player_ = 1;  // Current active player
+    // Player 1 state (White - Arrow keys + Enter)
+    PiecePtr selected_piece_player1_ = nullptr;
+    std::pair<int, int> cursor_pos_player1_ = {0, 0};
+    std::pair<int, int> selected_piece_pos_player1_ = {-1, -1};
+    bool is_selecting_target_player1_ = false;
+    
+    // Player 2 state (Black - WASD + Space)
+    PiecePtr selected_piece_player2_ = nullptr;
+    std::pair<int, int> cursor_pos_player2_ = {7, 7};
+    std::pair<int, int> selected_piece_pos_player2_ = {-1, -1};
+    bool is_selecting_target_player2_ = false;
+    
+    // Key mappings for both players
+    std::unordered_map<int, std::string> keymap_player1_;
+    std::unordered_map<int, std::string> keymap_player2_;
 
     std::chrono::steady_clock::time_point start_tp;
     
@@ -133,7 +142,7 @@ private:
     void handle_mouse_click(int x, int y);
     void handle_key_press(int key);
     void select_piece_at(int x, int y);
-    void move_cursor(int dx, int dy);
+    void move_cursor(int player_id, int dx, int dy);
     void confirm_move();
     void cancel_selection();
     std::string cell_to_chess_notation(int x, int y);

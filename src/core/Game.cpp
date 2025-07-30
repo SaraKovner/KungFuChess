@@ -10,7 +10,15 @@
 
 // ---------------- Implementation --------------------
 Game::Game(std::vector<PiecePtr> pcs, Board board)
-    : pieces(pcs), board(board), background_img_(nullptr) {
+    : pieces(pcs), board(board), background_img_(nullptr),
+    // Player 1 (White) starts at bottom-right
+    cursor_pos_player1_({board.W_cells - 1, board.H_cells - 1}),
+    selected_piece_pos_player1_({-1, -1}),
+    is_selecting_target_player1_(false),
+    // Player 2 (Black) starts at top-left
+    cursor_pos_player2_({0, 0}),
+    selected_piece_pos_player2_({-1, -1}),
+    is_selecting_target_player2_(false) {
     validate();
     for(const auto & p : pieces) {
         if (p) {
@@ -22,10 +30,38 @@ Game::Game(std::vector<PiecePtr> pcs, Board board)
     update_cell2piece_map();
     // Setup event observers
     setupEventListeners();
+    
+    // Setup key mappings for Player 1 (Arrow keys + Enter)
+    keymap_player1_ = {
+        {2490368, "left"},   // Left arrow
+        {2555904, "down"},   // Down arrow
+        {2424832, "up"},     // Up arrow
+        {2621440, "right"},  // Right arrow
+        {13, "select"},      // Enter
+        {27, "exit"}         // ESC
+    };
+    
+    // Setup key mappings for Player 2 (WASD + Space)
+    keymap_player2_ = {
+        {65, "left"},    // 'A'
+        {83, "down"},    // 'S'
+        {87, "up"},      // 'W'
+        {68, "right"},   // 'D'
+        {32, "select"},  // Space
+        {27, "exit"}     // ESC
+    };
 }
 
 Game::Game(std::vector<PiecePtr> pcs, Board board, ImgPtr background_img)
-    : pieces(pcs), board(board), background_img_(background_img) {
+    : pieces(pcs), board(board), background_img_(background_img),
+    // Player 1 (White) starts at bottom-right
+    cursor_pos_player1_({board.W_cells - 1, board.H_cells - 1}),
+    selected_piece_pos_player1_({-1, -1}),
+    is_selecting_target_player1_(false),
+    // Player 2 (Black) starts at top-left
+    cursor_pos_player2_({0, 0}),
+    selected_piece_pos_player2_({-1, -1}),
+    is_selecting_target_player2_(false) {
     validate();
     for(const auto & p : pieces) {
         if (p) {
@@ -37,6 +73,26 @@ Game::Game(std::vector<PiecePtr> pcs, Board board, ImgPtr background_img)
     update_cell2piece_map();
     // Setup event observers
     setupEventListeners();
+    
+    // Setup key mappings for Player 1 (Arrow keys + Enter)
+    keymap_player1_ = {
+        {2490368, "left"},   // Left arrow
+        {2555904, "down"},   // Down arrow
+        {2424832, "up"},     // Up arrow
+        {2621440, "right"},  // Right arrow
+        {13, "select"},      // Enter
+        {27, "exit"}         // ESC
+    };
+    
+    // Setup key mappings for Player 2 (WASD + Space)
+    keymap_player2_ = {
+        {65, "left"},    // 'A'
+        {83, "down"},    // 'S'
+        {87, "up"},      // 'W'
+        {68, "right"},   // 'D'
+        {32, "select"},  // Space
+        {27, "exit"}     // ESC
+    };
 }
 
 int Game::game_time_ms() const {
@@ -275,25 +331,42 @@ void Game::run_game_loop(int num_iterations, bool is_with_graphics) {
                 }
                 
                 if (pieces_drawn > 0) {
-                    // Draw green border around current cursor position
-                    auto cursor_pos_m = display_board.cell_to_m(cursor_pos_);
-                    auto cursor_pos_pix = display_board.m_to_pix(cursor_pos_m);
                     int cell_size = 80;
-                    cursor_pos_pix.first += board_x_offset;
-                    cursor_pos_pix.second += board_y_offset;
                     
-                    display_img->draw_rect(cursor_pos_pix.first, cursor_pos_pix.second, 
-                                          cell_size, cell_size, {0, 255, 0}); // Green border
+                    // Draw Player 1 cursor (White - Green border)
+                    auto cursor1_pos_m = display_board.cell_to_m(cursor_pos_player1_);
+                    auto cursor1_pos_pix = display_board.m_to_pix(cursor1_pos_m);
+                    cursor1_pos_pix.first += board_x_offset;
+                    cursor1_pos_pix.second += board_y_offset;
+                    display_img->draw_rect(cursor1_pos_pix.first, cursor1_pos_pix.second, 
+                                          cell_size, cell_size, {0, 255, 0}); // Green for Player 1
                     
-                    // Draw blue border around selected piece
-                    if (selected_piece_) {
-                        auto selected_pos_m = display_board.cell_to_m(selected_piece_pos_);
-                        auto selected_pos_pix = display_board.m_to_pix(selected_pos_m);
-                        selected_pos_pix.first += board_x_offset;
-                        selected_pos_pix.second += board_y_offset;
-                        
-                        display_img->draw_rect(selected_pos_pix.first, selected_pos_pix.second, 
-                                              cell_size, cell_size, {255, 0, 0}); // Blue border
+                    // Draw Player 2 cursor (Black - Red border)
+                    auto cursor2_pos_m = display_board.cell_to_m(cursor_pos_player2_);
+                    auto cursor2_pos_pix = display_board.m_to_pix(cursor2_pos_m);
+                    cursor2_pos_pix.first += board_x_offset;
+                    cursor2_pos_pix.second += board_y_offset;
+                    display_img->draw_rect(cursor2_pos_pix.first, cursor2_pos_pix.second, 
+                                          cell_size, cell_size, {255, 0, 0}); // Red for Player 2
+                    
+                    // Draw Player 1 selected piece (Blue border)
+                    if (selected_piece_player1_) {
+                        auto selected1_pos_m = display_board.cell_to_m(selected_piece_pos_player1_);
+                        auto selected1_pos_pix = display_board.m_to_pix(selected1_pos_m);
+                        selected1_pos_pix.first += board_x_offset;
+                        selected1_pos_pix.second += board_y_offset;
+                        display_img->draw_rect(selected1_pos_pix.first, selected1_pos_pix.second, 
+                                              cell_size, cell_size, {0, 0, 255}); // Blue for selected P1
+                    }
+                    
+                    // Draw Player 2 selected piece (Yellow border)
+                    if (selected_piece_player2_) {
+                        auto selected2_pos_m = display_board.cell_to_m(selected_piece_pos_player2_);
+                        auto selected2_pos_pix = display_board.m_to_pix(selected2_pos_m);
+                        selected2_pos_pix.first += board_x_offset;
+                        selected2_pos_pix.second += board_y_offset;
+                        display_img->draw_rect(selected2_pos_pix.first, selected2_pos_pix.second, 
+                                              cell_size, cell_size, {0, 255, 255}); // Yellow for selected P2
                     }
                     
                     display_img->show();
@@ -350,19 +423,34 @@ void Game::run_game_loop(int num_iterations, bool is_with_graphics) {
                 }
                 
                 if (pieces_drawn > 0) {
-                    // Draw green border around current cursor position
-                    auto cursor_pos_m = display_board.cell_to_m(cursor_pos_);
-                    auto cursor_pos_pix = display_board.m_to_pix(cursor_pos_m);
                     int cell_size = 80;
-                    display_board.img->draw_rect(cursor_pos_pix.first, cursor_pos_pix.second, 
-                                                cell_size, cell_size, {0, 255, 0}); // Green border
                     
-                    // Draw blue border around selected piece
-                    if (selected_piece_) {
-                        auto selected_pos_m = display_board.cell_to_m(selected_piece_pos_);
-                        auto selected_pos_pix = display_board.m_to_pix(selected_pos_m);
-                        display_board.img->draw_rect(selected_pos_pix.first, selected_pos_pix.second, 
-                                                   cell_size, cell_size, {255, 0, 0}); // Blue border
+                    // Draw Player 1 cursor (White - Green border)
+                    auto cursor1_pos_m = display_board.cell_to_m(cursor_pos_player1_);
+                    auto cursor1_pos_pix = display_board.m_to_pix(cursor1_pos_m);
+                    display_board.img->draw_rect(cursor1_pos_pix.first, cursor1_pos_pix.second, 
+                                                cell_size, cell_size, {0, 255, 0}); // Green for Player 1
+                    
+                    // Draw Player 2 cursor (Black - Red border)
+                    auto cursor2_pos_m = display_board.cell_to_m(cursor_pos_player2_);
+                    auto cursor2_pos_pix = display_board.m_to_pix(cursor2_pos_m);
+                    display_board.img->draw_rect(cursor2_pos_pix.first, cursor2_pos_pix.second, 
+                                                cell_size, cell_size, {255, 0, 0}); // Red for Player 2
+                    
+                    // Draw Player 1 selected piece (Blue border)
+                    if (selected_piece_player1_) {
+                        auto selected1_pos_m = display_board.cell_to_m(selected_piece_pos_player1_);
+                        auto selected1_pos_pix = display_board.m_to_pix(selected1_pos_m);
+                        display_board.img->draw_rect(selected1_pos_pix.first, selected1_pos_pix.second, 
+                                                   cell_size, cell_size, {0, 0, 255}); // Blue for selected P1
+                    }
+                    
+                    // Draw Player 2 selected piece (Yellow border)
+                    if (selected_piece_player2_) {
+                        auto selected2_pos_m = display_board.cell_to_m(selected_piece_pos_player2_);
+                        auto selected2_pos_pix = display_board.m_to_pix(selected2_pos_m);
+                        display_board.img->draw_rect(selected2_pos_pix.first, selected2_pos_pix.second, 
+                                                   cell_size, cell_size, {0, 255, 255}); // Yellow for selected P2
                     }
                     
                     display_board.show();
@@ -372,20 +460,17 @@ void Game::run_game_loop(int num_iterations, bool is_with_graphics) {
             // Handle input in main loop where window exists
             int key = cv::waitKeyEx(30);
             if (key != -1) {
-                Command cmd(game_time_ms(), "", "", {});
-                
-                // Arrow keys controls (final: swap 8 and 2)
-                if (key == 2424832) cmd = Command(game_time_ms(), "", "up", {});    // 4 -> Up
-                else if (key == 2555904) cmd = Command(game_time_ms(), "", "down", {});  // 6 -> Down  
-                else if (key == 2490368) cmd = Command(game_time_ms(), "", "left", {});  // 8 -> Left
-                else if (key == 2621440) cmd = Command(game_time_ms(), "", "right", {}); // 2 -> Right
-                else if (key == 13) cmd = Command(game_time_ms(), "", "select", {});  // Enter
-                else if (key == 27) { // ESC
-                    return;
+                // Player 1 controls (Arrow keys + Enter)
+                if (keymap_player1_.find(key) != keymap_player1_.end()) {
+                    process_input(1, keymap_player1_[key]);
                 }
-                
-                if (!cmd.type.empty()) {
-                    process_input(cmd);
+                // Player 2 controls (WASD + Space)
+                else if (keymap_player2_.find(key) != keymap_player2_.end()) {
+                    process_input(2, keymap_player2_[key]);
+                }
+                // ESC exits for both players
+                else if (key == 27) {
+                    return;
                 }
             }
         }
@@ -414,34 +499,49 @@ void Game::update_cell2piece_map() {
     }
 }
 
-void Game::process_input(const Command& cmd) {
+void Game::process_input(int player_id, const std::string& cmd_type) {
     std::lock_guard<std::mutex> lock(input_mutex_);
     
-    if (cmd.type == "up") move_cursor(0, -1);
-    else if (cmd.type == "down") move_cursor(0, 1);
-    else if (cmd.type == "left") move_cursor(-1, 0);
-    else if (cmd.type == "right") move_cursor(1, 0);
-    else if (cmd.type == "select") {
+    // Get player-specific state
+    PiecePtr& selected_piece = (player_id == 1) ? selected_piece_player1_ : selected_piece_player2_;
+    std::pair<int, int>& cursor_pos = (player_id == 1) ? cursor_pos_player1_ : cursor_pos_player2_;
+    std::pair<int, int>& selected_piece_pos = (player_id == 1) ? selected_piece_pos_player1_ : selected_piece_pos_player2_;
+    bool& is_selecting_target = (player_id == 1) ? is_selecting_target_player1_ : is_selecting_target_player2_;
+    
+    if (cmd_type == "up") move_cursor(player_id, 0, -1);
+    else if (cmd_type == "down") move_cursor(player_id, 0, 1);
+    else if (cmd_type == "left") move_cursor(player_id, -1, 0);
+    else if (cmd_type == "right") move_cursor(player_id, 1, 0);
+    else if (cmd_type == "select") {
         // Update position map before accessing it
         update_cell2piece_map();
         
         // Enhanced selection logic from movement-logic branch
-        if (selected_piece_ == nullptr) {
+        if (selected_piece == nullptr) {
             // First press - pick up piece under cursor
-            auto cell_pieces_it = pos.find(cursor_pos_);
+            auto cell_pieces_it = pos.find(cursor_pos);
             if (cell_pieces_it != pos.end() && !cell_pieces_it->second.empty()) {
-                selected_piece_ = cell_pieces_it->second[0];
-                selected_piece_pos_ = cursor_pos_;
+                auto piece = cell_pieces_it->second[0];
+                // Check if player can control this piece
+                if (piece && piece->id.length() >= 2) {
+                    char piece_color = piece->id[1];
+                    bool can_control = (player_id == 1 && piece_color == 'W') || (player_id == 2 && piece_color == 'B');
+                    if (can_control) {
+                        selected_piece = piece;
+                        selected_piece_pos = cursor_pos;
+                    }
+                }
             }
-        } else if (cursor_pos_ == selected_piece_pos_) {
+        } else if (cursor_pos == selected_piece_pos) {
             // Same position - deselect
-            selected_piece_ = nullptr;
-            selected_piece_pos_ = {-1, -1};
+            selected_piece = nullptr;
+            selected_piece_pos = {-1, -1};
         } else {
             // Different position - validate and create move command
-            if (is_move_valid(selected_piece_, selected_piece_pos_, cursor_pos_)) {
+            if (is_move_valid(selected_piece, selected_piece_pos, cursor_pos)) {
                 try {
-                    Command move_cmd(cmd.timestamp, selected_piece_->id, "move", {selected_piece_pos_, cursor_pos_});
+                    std::vector<std::pair<int,int>> move_params = {selected_piece_pos, cursor_pos};
+                    Command move_cmd(game_time_ms(), selected_piece->id, "move", move_params);
                     
                     // Process the move command through state machine
                     auto piece_it = piece_by_id.find(move_cmd.piece_id);
@@ -456,8 +556,8 @@ void Game::process_input(const Command& cmd) {
                             bool isWhite = (piece->id.length() >= 2 && piece->id[1] == 'W');
                             MoveEvent moveEvent(
                                 piece->id, 
-                                cellToChessNotation(selected_piece_pos_.first, selected_piece_pos_.second),
-                                cellToChessNotation(cursor_pos_.first, cursor_pos_.second),
+                                cellToChessNotation(selected_piece_pos.first, selected_piece_pos.second),
+                                cellToChessNotation(cursor_pos.first, cursor_pos.second),
                                 isWhite,
                                 game_time_ms()
                             );
@@ -468,18 +568,18 @@ void Game::process_input(const Command& cmd) {
                     // Handle move command errors silently
                 }
             }
-            // If move is invalid, silently ignore (piece stays selected)
             
             // Reset selection
-            selected_piece_ = nullptr;
-            selected_piece_pos_ = {-1, -1};
+            selected_piece = nullptr;
+            selected_piece_pos = {-1, -1};
         }
     }
 }
 
-void Game::move_cursor(int dx, int dy) {
-    cursor_pos_.first = (std::max)(0, (std::min)(board.W_cells - 1, cursor_pos_.first + dx));
-    cursor_pos_.second = (std::max)(0, (std::min)(board.H_cells - 1, cursor_pos_.second + dy));
+void Game::move_cursor(int player_id, int dx, int dy) {
+    std::pair<int, int>& cursor_pos = (player_id == 1) ? cursor_pos_player1_ : cursor_pos_player2_;
+    cursor_pos.first = (std::max)(0, (std::min)(board.W_cells - 1, cursor_pos.first + dx));
+    cursor_pos.second = (std::max)(0, (std::min)(board.H_cells - 1, cursor_pos.second + dy));
 }
 
 void Game::resolve_collisions() {
@@ -553,13 +653,15 @@ void Game::enqueue_command(const Command& cmd) {
 
 void Game::handle_mouse_click(int x, int y) {
     std::lock_guard<std::mutex> lock(input_mutex_);
-    if (!is_selecting_target_) {
+    // Mouse click defaults to Player 1
+    if (!is_selecting_target_player1_) {
         select_piece_at(x, y);
     } else {
-        if (selected_piece_) {
-            auto start_cell = selected_piece_->current_cell();
-            if (is_move_valid(selected_piece_, start_cell, {x, y})) {
-                Command move_cmd(game_time_ms(), selected_piece_->id, "move", {start_cell, {x, y}}, 1);
+        if (selected_piece_player1_) {
+            auto start_cell = selected_piece_player1_->current_cell();
+            if (is_move_valid(selected_piece_player1_, start_cell, {x, y})) {
+                std::vector<std::pair<int,int>> move_params = {start_cell, {x, y}};
+                Command move_cmd(game_time_ms(), selected_piece_player1_->id, "move", move_params, 1);
                 enqueue_command(move_cmd);
             }
         }
@@ -569,30 +671,31 @@ void Game::handle_mouse_click(int x, int y) {
 
 void Game::handle_key_press(int key) {
     std::lock_guard<std::mutex> lock(input_mutex_);
-    switch(key) {
-        case 27: cancel_selection(); break;
-        case 13: confirm_move(); break;
-        case 2424832: move_cursor(0, -1); break;  // 4 -> Up
-        case 2555904: move_cursor(0, 1); break;   // 6 -> Down
-        case 2490368: move_cursor(-1, 0); break;  // 8 -> Left
-        case 2621440: move_cursor(1, 0); break;   // 2 -> Right
+    // Player 1 controls (Arrow keys + Enter)
+    if (keymap_player1_.find(key) != keymap_player1_.end()) {
+        process_input(1, keymap_player1_[key]);
+    }
+    // Player 2 controls (WASD + Space)
+    else if (keymap_player2_.find(key) != keymap_player2_.end()) {
+        process_input(2, keymap_player2_[key]);
     }
 }
 
 void Game::select_piece_at(int x, int y) {
     auto cell_pieces_it = pos.find({x, y});
     if (cell_pieces_it != pos.end() && !cell_pieces_it->second.empty()) {
-        selected_piece_ = cell_pieces_it->second[0];
-        cursor_pos_ = {x, y};
-        is_selecting_target_ = true;
+        selected_piece_player1_ = cell_pieces_it->second[0];
+        cursor_pos_player1_ = {x, y};
+        is_selecting_target_player1_ = true;
     }
 }
 
 void Game::confirm_move() {
-    if (selected_piece_ && is_selecting_target_) {
-        auto start_cell = selected_piece_->current_cell();
-        if (is_move_valid(selected_piece_, start_cell, cursor_pos_)) {
-            Command move_cmd(game_time_ms(), selected_piece_->id, "move", {start_cell, cursor_pos_}, 1);
+    if (selected_piece_player1_ && is_selecting_target_player1_) {
+        auto start_cell = selected_piece_player1_->current_cell();
+        if (is_move_valid(selected_piece_player1_, start_cell, cursor_pos_player1_)) {
+            std::vector<std::pair<int,int>> move_params = {start_cell, cursor_pos_player1_};
+            Command move_cmd(game_time_ms(), selected_piece_player1_->id, "move", move_params, 1);
             enqueue_command(move_cmd);
         }
     }
@@ -600,8 +703,10 @@ void Game::confirm_move() {
 }
 
 void Game::cancel_selection() {
-    selected_piece_ = nullptr;
-    is_selecting_target_ = false;
+    selected_piece_player1_ = nullptr;
+    selected_piece_player2_ = nullptr;
+    is_selecting_target_player1_ = false;
+    is_selecting_target_player2_ = false;
 }
 
 std::string Game::cell_to_chess_notation(int x, int y) {
