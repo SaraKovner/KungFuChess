@@ -41,14 +41,14 @@ Game::Game(std::vector<PiecePtr> pcs, Board board)
         {27, "exit"}         // ESC
     };
     
-    // Setup key mappings for Player 2 (WASD + Space)
+    // Setup key mappings for Player 2 (Same as Player 1 - Arrow keys + Enter)
     keymap_player2_ = {
-        {65, "left"},    // 'A'
-        {83, "down"},    // 'S'
-        {87, "up"},      // 'W'
-        {68, "right"},   // 'D'
-        {32, "select"},  // Space
-        {27, "exit"}     // ESC
+        {2490368, "left"},   // Left arrow
+        {2555904, "down"},   // Down arrow
+        {2424832, "up"},     // Up arrow
+        {2621440, "right"},  // Right arrow
+        {13, "select"},      // Enter
+        {27, "exit"}         // ESC
     };
 }
 
@@ -84,14 +84,14 @@ Game::Game(std::vector<PiecePtr> pcs, Board board, ImgPtr background_img)
         {27, "exit"}         // ESC
     };
     
-    // Setup key mappings for Player 2 (WASD + Space)
+    // Setup key mappings for Player 2 (Same as Player 1 - Arrow keys + Enter)
     keymap_player2_ = {
-        {65, "left"},    // 'A'
-        {83, "down"},    // 'S'
-        {87, "up"},      // 'W'
-        {68, "right"},   // 'D'
-        {32, "select"},  // Space
-        {27, "exit"}     // ESC
+        {2490368, "left"},   // Left arrow
+        {2555904, "down"},   // Down arrow
+        {2424832, "up"},     // Up arrow
+        {2621440, "right"},  // Right arrow
+        {13, "select"},      // Enter
+        {27, "exit"}         // ESC
     };
 }
 
@@ -342,40 +342,82 @@ void Game::run_game_loop(int num_iterations, bool is_with_graphics) {
                 if (pieces_drawn > 0) {
                     int cell_size = 80;
                     
-                    // Draw Player 1 cursor (White - Green border)
-                    auto cursor1_pos_m = display_board.cell_to_m(cursor_pos_player1_);
-                    auto cursor1_pos_pix = display_board.m_to_pix(cursor1_pos_m);
-                    cursor1_pos_pix.first += board_x_offset;
-                    cursor1_pos_pix.second += board_y_offset;
-                    display_img->draw_rect(cursor1_pos_pix.first, cursor1_pos_pix.second, 
-                                          cell_size, cell_size, {0, 255, 0}); // Green for Player 1
-                    
-                    // Draw Player 2 cursor (Black - Red border)
-                    auto cursor2_pos_m = display_board.cell_to_m(cursor_pos_player2_);
-                    auto cursor2_pos_pix = display_board.m_to_pix(cursor2_pos_m);
-                    cursor2_pos_pix.first += board_x_offset;
-                    cursor2_pos_pix.second += board_y_offset;
-                    display_img->draw_rect(cursor2_pos_pix.first, cursor2_pos_pix.second, 
-                                          cell_size, cell_size, {255, 0, 0}); // Red for Player 2
-                    
-                    // Draw Player 1 selected piece (Blue border)
-                    if (selected_piece_player1_) {
-                        auto selected1_pos_m = display_board.cell_to_m(selected_piece_pos_player1_);
-                        auto selected1_pos_pix = display_board.m_to_pix(selected1_pos_m);
-                        selected1_pos_pix.first += board_x_offset;
-                        selected1_pos_pix.second += board_y_offset;
-                        display_img->draw_rect(selected1_pos_pix.first, selected1_pos_pix.second, 
-                                              cell_size, cell_size, {0, 0, 255}); // Blue for selected P1
-                    }
-                    
-                    // Draw Player 2 selected piece (Yellow border)
-                    if (selected_piece_player2_) {
-                        auto selected2_pos_m = display_board.cell_to_m(selected_piece_pos_player2_);
-                        auto selected2_pos_pix = display_board.m_to_pix(selected2_pos_m);
-                        selected2_pos_pix.first += board_x_offset;
-                        selected2_pos_pix.second += board_y_offset;
-                        display_img->draw_rect(selected2_pos_pix.first, selected2_pos_pix.second, 
-                                              cell_size, cell_size, {0, 255, 255}); // Yellow for selected P2
+                    // In network mode, only draw this client's cursor and selection
+                    if (network_interface_ && my_player_id_ > 0) {
+                        if (my_player_id_ == 1) {
+                            // Draw Player 1 cursor (White - Green border)
+                            auto cursor1_pos_m = display_board.cell_to_m(cursor_pos_player1_);
+                            auto cursor1_pos_pix = display_board.m_to_pix(cursor1_pos_m);
+                            cursor1_pos_pix.first += board_x_offset;
+                            cursor1_pos_pix.second += board_y_offset;
+                            display_img->draw_rect(cursor1_pos_pix.first, cursor1_pos_pix.second, 
+                                                  cell_size, cell_size, {0, 255, 0}); // Green for Player 1
+                            
+                            // Draw Player 1 selected piece (Blue border)
+                            if (selected_piece_player1_) {
+                                auto selected1_pos_m = display_board.cell_to_m(selected_piece_pos_player1_);
+                                auto selected1_pos_pix = display_board.m_to_pix(selected1_pos_m);
+                                selected1_pos_pix.first += board_x_offset;
+                                selected1_pos_pix.second += board_y_offset;
+                                display_img->draw_rect(selected1_pos_pix.first, selected1_pos_pix.second, 
+                                                      cell_size, cell_size, {0, 0, 255}); // Blue for selected P1
+                            }
+                        } else if (my_player_id_ == 2) {
+                            // Draw Player 2 cursor (Black - Red border)
+                            auto cursor2_pos_m = display_board.cell_to_m(cursor_pos_player2_);
+                            auto cursor2_pos_pix = display_board.m_to_pix(cursor2_pos_m);
+                            cursor2_pos_pix.first += board_x_offset;
+                            cursor2_pos_pix.second += board_y_offset;
+                            display_img->draw_rect(cursor2_pos_pix.first, cursor2_pos_pix.second, 
+                                                  cell_size, cell_size, {255, 0, 0}); // Red for Player 2
+                            
+                            // Draw Player 2 selected piece (Yellow border)
+                            if (selected_piece_player2_) {
+                                auto selected2_pos_m = display_board.cell_to_m(selected_piece_pos_player2_);
+                                auto selected2_pos_pix = display_board.m_to_pix(selected2_pos_m);
+                                selected2_pos_pix.first += board_x_offset;
+                                selected2_pos_pix.second += board_y_offset;
+                                display_img->draw_rect(selected2_pos_pix.first, selected2_pos_pix.second, 
+                                                      cell_size, cell_size, {0, 255, 255}); // Yellow for selected P2
+                            }
+                        }
+                    } else {
+                        // In local mode, draw both cursors
+                        // Draw Player 1 cursor (White - Green border)
+                        auto cursor1_pos_m = display_board.cell_to_m(cursor_pos_player1_);
+                        auto cursor1_pos_pix = display_board.m_to_pix(cursor1_pos_m);
+                        cursor1_pos_pix.first += board_x_offset;
+                        cursor1_pos_pix.second += board_y_offset;
+                        display_img->draw_rect(cursor1_pos_pix.first, cursor1_pos_pix.second, 
+                                              cell_size, cell_size, {0, 255, 0}); // Green for Player 1
+                        
+                        // Draw Player 2 cursor (Black - Red border)
+                        auto cursor2_pos_m = display_board.cell_to_m(cursor_pos_player2_);
+                        auto cursor2_pos_pix = display_board.m_to_pix(cursor2_pos_m);
+                        cursor2_pos_pix.first += board_x_offset;
+                        cursor2_pos_pix.second += board_y_offset;
+                        display_img->draw_rect(cursor2_pos_pix.first, cursor2_pos_pix.second, 
+                                              cell_size, cell_size, {255, 0, 0}); // Red for Player 2
+                        
+                        // Draw Player 1 selected piece (Blue border)
+                        if (selected_piece_player1_) {
+                            auto selected1_pos_m = display_board.cell_to_m(selected_piece_pos_player1_);
+                            auto selected1_pos_pix = display_board.m_to_pix(selected1_pos_m);
+                            selected1_pos_pix.first += board_x_offset;
+                            selected1_pos_pix.second += board_y_offset;
+                            display_img->draw_rect(selected1_pos_pix.first, selected1_pos_pix.second, 
+                                                  cell_size, cell_size, {0, 0, 255}); // Blue for selected P1
+                        }
+                        
+                        // Draw Player 2 selected piece (Yellow border)
+                        if (selected_piece_player2_) {
+                            auto selected2_pos_m = display_board.cell_to_m(selected_piece_pos_player2_);
+                            auto selected2_pos_pix = display_board.m_to_pix(selected2_pos_m);
+                            selected2_pos_pix.first += board_x_offset;
+                            selected2_pos_pix.second += board_y_offset;
+                            display_img->draw_rect(selected2_pos_pix.first, selected2_pos_pix.second, 
+                                                  cell_size, cell_size, {0, 255, 255}); // Yellow for selected P2
+                        }
                     }
                     
                     display_img->show();
@@ -434,32 +476,66 @@ void Game::run_game_loop(int num_iterations, bool is_with_graphics) {
                 if (pieces_drawn > 0) {
                     int cell_size = 80;
                     
-                    // Draw Player 1 cursor (White - Green border)
-                    auto cursor1_pos_m = display_board.cell_to_m(cursor_pos_player1_);
-                    auto cursor1_pos_pix = display_board.m_to_pix(cursor1_pos_m);
-                    display_board.img->draw_rect(cursor1_pos_pix.first, cursor1_pos_pix.second, 
-                                                cell_size, cell_size, {0, 255, 0}); // Green for Player 1
-                    
-                    // Draw Player 2 cursor (Black - Red border)
-                    auto cursor2_pos_m = display_board.cell_to_m(cursor_pos_player2_);
-                    auto cursor2_pos_pix = display_board.m_to_pix(cursor2_pos_m);
-                    display_board.img->draw_rect(cursor2_pos_pix.first, cursor2_pos_pix.second, 
-                                                cell_size, cell_size, {255, 0, 0}); // Red for Player 2
-                    
-                    // Draw Player 1 selected piece (Blue border)
-                    if (selected_piece_player1_) {
-                        auto selected1_pos_m = display_board.cell_to_m(selected_piece_pos_player1_);
-                        auto selected1_pos_pix = display_board.m_to_pix(selected1_pos_m);
-                        display_board.img->draw_rect(selected1_pos_pix.first, selected1_pos_pix.second, 
-                                                   cell_size, cell_size, {0, 0, 255}); // Blue for selected P1
-                    }
-                    
-                    // Draw Player 2 selected piece (Yellow border)
-                    if (selected_piece_player2_) {
-                        auto selected2_pos_m = display_board.cell_to_m(selected_piece_pos_player2_);
-                        auto selected2_pos_pix = display_board.m_to_pix(selected2_pos_m);
-                        display_board.img->draw_rect(selected2_pos_pix.first, selected2_pos_pix.second, 
-                                                   cell_size, cell_size, {0, 255, 255}); // Yellow for selected P2
+                    // In network mode, only draw this client's cursor and selection
+                    if (network_interface_ && my_player_id_ > 0) {
+                        if (my_player_id_ == 1) {
+                            // Draw Player 1 cursor (White - Green border)
+                            auto cursor1_pos_m = display_board.cell_to_m(cursor_pos_player1_);
+                            auto cursor1_pos_pix = display_board.m_to_pix(cursor1_pos_m);
+                            display_board.img->draw_rect(cursor1_pos_pix.first, cursor1_pos_pix.second, 
+                                                        cell_size, cell_size, {0, 255, 0}); // Green for Player 1
+                            
+                            // Draw Player 1 selected piece (Blue border)
+                            if (selected_piece_player1_) {
+                                auto selected1_pos_m = display_board.cell_to_m(selected_piece_pos_player1_);
+                                auto selected1_pos_pix = display_board.m_to_pix(selected1_pos_m);
+                                display_board.img->draw_rect(selected1_pos_pix.first, selected1_pos_pix.second, 
+                                                           cell_size, cell_size, {0, 0, 255}); // Blue for selected P1
+                            }
+                        } else if (my_player_id_ == 2) {
+                            // Draw Player 2 cursor (Black - Red border)
+                            auto cursor2_pos_m = display_board.cell_to_m(cursor_pos_player2_);
+                            auto cursor2_pos_pix = display_board.m_to_pix(cursor2_pos_m);
+                            display_board.img->draw_rect(cursor2_pos_pix.first, cursor2_pos_pix.second, 
+                                                        cell_size, cell_size, {255, 0, 0}); // Red for Player 2
+                            
+                            // Draw Player 2 selected piece (Yellow border)
+                            if (selected_piece_player2_) {
+                                auto selected2_pos_m = display_board.cell_to_m(selected_piece_pos_player2_);
+                                auto selected2_pos_pix = display_board.m_to_pix(selected2_pos_m);
+                                display_board.img->draw_rect(selected2_pos_pix.first, selected2_pos_pix.second, 
+                                                           cell_size, cell_size, {0, 255, 255}); // Yellow for selected P2
+                            }
+                        }
+                    } else {
+                        // In local mode, draw both cursors
+                        // Draw Player 1 cursor (White - Green border)
+                        auto cursor1_pos_m = display_board.cell_to_m(cursor_pos_player1_);
+                        auto cursor1_pos_pix = display_board.m_to_pix(cursor1_pos_m);
+                        display_board.img->draw_rect(cursor1_pos_pix.first, cursor1_pos_pix.second, 
+                                                    cell_size, cell_size, {0, 255, 0}); // Green for Player 1
+                        
+                        // Draw Player 2 cursor (Black - Red border)
+                        auto cursor2_pos_m = display_board.cell_to_m(cursor_pos_player2_);
+                        auto cursor2_pos_pix = display_board.m_to_pix(cursor2_pos_m);
+                        display_board.img->draw_rect(cursor2_pos_pix.first, cursor2_pos_pix.second, 
+                                                    cell_size, cell_size, {255, 0, 0}); // Red for Player 2
+                        
+                        // Draw Player 1 selected piece (Blue border)
+                        if (selected_piece_player1_) {
+                            auto selected1_pos_m = display_board.cell_to_m(selected_piece_pos_player1_);
+                            auto selected1_pos_pix = display_board.m_to_pix(selected1_pos_m);
+                            display_board.img->draw_rect(selected1_pos_pix.first, selected1_pos_pix.second, 
+                                                       cell_size, cell_size, {0, 0, 255}); // Blue for selected P1
+                        }
+                        
+                        // Draw Player 2 selected piece (Yellow border)
+                        if (selected_piece_player2_) {
+                            auto selected2_pos_m = display_board.cell_to_m(selected_piece_pos_player2_);
+                            auto selected2_pos_pix = display_board.m_to_pix(selected2_pos_m);
+                            display_board.img->draw_rect(selected2_pos_pix.first, selected2_pos_pix.second, 
+                                                       cell_size, cell_size, {0, 255, 255}); // Yellow for selected P2
+                        }
                     }
                     
                     display_board.show();
@@ -526,15 +602,12 @@ void Game::update_cell2piece_map() {
 }
 
 void Game::process_input(int player_id, const std::string& cmd_type) {
-    // אם יש לנו network interface, שולחים את הקלט לשרת במקום לעבד מקומית
+    // אם יש לנו network interface, שולחים את הקלט לשרת
     if (network_interface_) {
         std::string input_message = "INPUT:" + std::to_string(player_id) + ":" + cmd_type;
         network_interface_->sendMove(input_message);
         
-        // עדכון מקומי מיידי עבור השחקן שיוזם את הפעולה (למנוע השהייה רשת)
-        if (player_id == my_player_id_) {
-            process_input_local(player_id, cmd_type);
-        }
+        // לא מעבדים מקומית - נחכה לתגובה מהשרת לסנכרון מלא
         return;
     }
     

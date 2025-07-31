@@ -276,13 +276,9 @@ void GameClient::handleServerCommand(const std::string& command) {
         
         std::cout << "🔍 Command for player: " << player_id << ", I am player: " << my_player_id << std::endl;
         
-        // Skip commands that were already processed locally (to avoid double processing)
-        if (player_id == my_player_id) {
-            std::cout << "� Skipping own command (already processed locally): Player " << player_id << " -> " << cmd_type << std::endl;
-            return;
-        }
-        
-        std::cout << "🎯 Applying server command from other player: Player " << player_id << " -> " << cmd_type << std::endl;
+        // Process all commands from server to ensure synchronization
+        // The server is the authoritative source for all game state
+        std::cout << "🎯 Applying server command: Player " << player_id << " -> " << cmd_type << std::endl;
         
         // Apply command to local game if we have a game instance
         if (game_) {
