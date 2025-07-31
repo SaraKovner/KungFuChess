@@ -1,118 +1,53 @@
 cmake_minimum_required(VERSION 3.16)
 project(KungFuChess)
 
-# Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# ---------------------------------------------------------------------
-# Source file collection
-# ---------------------------------------------------------------------
-file(GLOB_RECURSE ALL_CPP "src/*.cpp")
-file(GLOB_RECURSE OBSERVER_CPP "observer/src/*.cpp")
-file(GLOB_RECURSE NETWORK_CPP "src/network/*.cpp")
-file(GLOB_RECURSE HEADERS  "src/*.hpp")
+# OpenCV
+set(OpenCV_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/OpenCV_451/include")
+set(OpenCV_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/OpenCV_451/bin/opencv_world451.lib")
+include_directories(${OpenCV_INCLUDE_DIRS})
 
-# Separate the program entry point (main.cpp)
-set(MAIN_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
-set(SOURCES ${ALL_CPP} ${OBSERVER_CPP} ${NETWORK_CPP})
-list(REMOVE_ITEM SOURCES ${MAIN_SRC})
-
-# ---------------------------------------------------------------------
-# Core library – contains all engine code (no main())
-# ---------------------------------------------------------------------
-add_library(kungfu_chess_lib STATIC ${SOURCES} ${HEADERS})
-
-# ---------------------------------------------------------------------
-# Executables – server and client
-# ---------------------------------------------------------------------
-# Original local game (keep for testing)
-add_executable(${PROJECT_NAME} ${MAIN_SRC})
-target_link_libraries(${PROJECT_NAME} PRIVATE kungfu_chess_lib)
-
-# Network-based server and client
-add_executable(KungFuChess_Server src/main_server.cpp)
-add_executable(KungFuChess_Client src/main_client.cpp)
-
-target_link_libraries(KungFuChess_Server PRIVATE kungfu_chess_lib)
-target_link_libraries(KungFuChess_Client PRIVATE kungfu_chess_lib)
-
-# Set OpenCV paths
-set(OPENCV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/OpenCV_451")
-set(OPENCV_INCLUDE_DIR "${OPENCV_DIR}/include")
-set(OPENCV_LIB_DIR "${OPENCV_DIR}/bin")
-
-# Include directories
-target_include_directories(kungfu_chess_lib PRIVATE
-    ${OPENCV_INCLUDE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/core
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/graphics
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/graphics/img
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/game_logic
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/network
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/json
-    ${CMAKE_CURRENT_SOURCE_DIR}/observer/headers)
-
-target_include_directories(${PROJECT_NAME} PRIVATE
-    ${OPENCV_INCLUDE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/core
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/graphics
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/graphics/img
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/game_logic
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/json
-    ${CMAKE_CURRENT_SOURCE_DIR}/observer/headers)
-
-target_link_directories(kungfu_chess_lib PRIVATE ${OPENCV_LIB_DIR})
-target_link_directories(${PROJECT_NAME} PRIVATE ${OPENCV_LIB_DIR})
-
-# Link OpenCV and Windows multimedia libraries
-target_link_libraries(kungfu_chess_lib 
-    $<$<CONFIG:Debug>:${OPENCV_LIB_DIR}/opencv_world451d.lib>
-    $<$<CONFIG:Release>:${OPENCV_LIB_DIR}/opencv_world451.lib>
-    $<$<CONFIG:RelWithDebInfo>:${OPENCV_LIB_DIR}/opencv_world451.lib>
-    $<$<CONFIG:MinSizeRel>:${OPENCV_LIB_DIR}/opencv_world451.lib>
-    winmm
+# Shared library
+file(GLOB_RECURSE SHARED_SOURCES 
+    "shared/core/Board.cpp"
+    "shared/core/Game.cpp"
+    "shared/game_logic/*.cpp"
+    "shared/graphics/Graphics.cpp"
+    "shared/graphics/img/OpenCvImg.cpp"
+    "shared/observer/src/BlackMovesTable.cpp"
+    "shared/observer/src/BlackScoreTracker.cpp"
+    "shared/observer/src/GameEventManager.cpp"
+    "shared/observer/src/SoundManager.cpp"
+    "shared/observer/src/TemplateInstantiations.cpp"
+    "shared/observer/src/VoiceAnnouncer.cpp"
+    "shared/observer/src/WhiteMovesTable.cpp"
+    "shared/observer/src/WhiteScoreTracker.cpp"
 )
 
-# Copy OpenCV DLLs to output directory
-if(WIN32)
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<$<CONFIG:Debug>:${OPENCV_LIB_DIR}/opencv_world451d.dll>
-        $<$<CONFIG:Release>:${OPENCV_LIB_DIR}/opencv_world451.dll>
-        $<$<CONFIG:RelWithDebInfo>:${OPENCV_LIB_DIR}/opencv_world451.dll>
-        $<$<CONFIG:MinSizeRel>:${OPENCV_LIB_DIR}/opencv_world451.dll>
-        $<TARGET_FILE_DIR:${PROJECT_NAME}>)
-endif()
+add_library(shared_lib ${SHARED_SOURCES})
+target_include_directories(shared_lib PUBLIC shared shared/utils/json)
+target_link_libraries(shared_lib ${OpenCV_LIBS})
 
-# Add option to build unit tests
-option(KFC_BUILD_TESTS "Build doctest-based unit tests" ON)
+# Server executable
+add_executable(server 
+    server/main_server.cpp
+    server/network/GameServer.cpp
+    server/network/GameServerLogic.cpp
+)
+target_include_directories(server PRIVATE server shared)
+target_link_libraries(server shared_lib winmm)
 
-if(KFC_BUILD_TESTS)
-    file(GLOB_RECURSE TEST_SOURCES "tests/*.cpp")
-    if(TEST_SOURCES)
-        add_executable(kungfu_chess_tests ${TEST_SOURCES})
-        target_include_directories(kungfu_chess_tests PRIVATE
-            ${OPENCV_INCLUDE_DIR}
-            ${CMAKE_CURRENT_SOURCE_DIR}
-            ${CMAKE_CURRENT_SOURCE_DIR}/src
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/core
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/graphics
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/game_logic
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/json)
-        target_link_libraries(kungfu_chess_tests PRIVATE kungfu_chess_lib)
+# Client executable  
+add_executable(client
+    client/main_client.cpp
+    client/network/GameClient.cpp
+)
+target_include_directories(client PRIVATE client shared)
+target_link_libraries(client shared_lib ${OpenCV_LIBS} winmm)
 
-        # Enable CTest integration
-        enable_testing()
-        add_test(NAME kungfu_chess_tests COMMAND kungfu_chess_tests)
-    endif()
-endif()
-
-# Print found sources for debugging
-message(STATUS "Found source files: ${SOURCES}")
-message(STATUS "Found header files: ${HEADERS}")
+# Tests
+file(GLOB TEST_SOURCES "tests/test_*.cpp")
+add_executable(tests tests/test_main.cpp ${TEST_SOURCES})
+target_include_directories(tests PRIVATE shared shared/utils/json tests)
+target_link_libraries(tests shared_lib ${OpenCV_LIBS})
