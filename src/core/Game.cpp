@@ -104,6 +104,11 @@ void Game::setNetworkInterface(NetworkInterface* network) {
     network_interface_ = network;
 }
 
+void Game::setMyPlayerId(int player_id) {
+    my_player_id_ = player_id;
+    std::cout << "🎯 This client represents player " << player_id << std::endl;
+}
+
 Board Game::clone_board() const {
     return board.clone();
 }
@@ -464,17 +469,34 @@ void Game::run_game_loop(int num_iterations, bool is_with_graphics) {
             // Handle input in main loop where window exists
             int key = cv::waitKeyEx(30);
             if (key != -1) {
-                // Player 1 controls (Arrow keys + Enter)
-                if (keymap_player1_.find(key) != keymap_player1_.end()) {
-                    process_input(1, keymap_player1_[key]);
+                // In network mode, only process keys for this client's player
+                if (network_interface_ && my_player_id_ > 0) {
+                    if (my_player_id_ == 1 && keymap_player1_.find(key) != keymap_player1_.end()) {
+                        // Player 1 (WHITE) controls (Arrow keys + Enter)
+                        process_input(1, keymap_player1_[key]);
+                    }
+                    else if (my_player_id_ == 2 && keymap_player2_.find(key) != keymap_player2_.end()) {
+                        // Player 2 (BLACK) controls (WASD + Space)
+                        process_input(2, keymap_player2_[key]);
+                    }
+                    else if (key == 27) {
+                        return; // ESC exits
+                    }
                 }
-                // Player 2 controls (WASD + Space)
-                else if (keymap_player2_.find(key) != keymap_player2_.end()) {
-                    process_input(2, keymap_player2_[key]);
-                }
-                // ESC exits for both players
-                else if (key == 27) {
-                    return;
+                // In local mode, handle both players
+                else {
+                    // Player 1 controls (Arrow keys + Enter)
+                    if (keymap_player1_.find(key) != keymap_player1_.end()) {
+                        process_input(1, keymap_player1_[key]);
+                    }
+                    // Player 2 controls (WASD + Space)
+                    else if (keymap_player2_.find(key) != keymap_player2_.end()) {
+                        process_input(2, keymap_player2_[key]);
+                    }
+                    // ESC exits for both players
+                    else if (key == 27) {
+                        return;
+                    }
                 }
             }
         }
@@ -508,6 +530,11 @@ void Game::process_input(int player_id, const std::string& cmd_type) {
     if (network_interface_) {
         std::string input_message = "INPUT:" + std::to_string(player_id) + ":" + cmd_type;
         network_interface_->sendMove(input_message);
+        
+        // עדכון מקומי מיידי עבור השחקן שיוזם את הפעולה (למנוע השהייה רשת)
+        if (player_id == my_player_id_) {
+            process_input_local(player_id, cmd_type);
+        }
         return;
     }
     

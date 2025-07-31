@@ -87,8 +87,8 @@ void GameServer::acceptClients() {
             continue;
         }
 
-        // Assign color based on connection order - REVERSED FOR TESTING
-        PlayerColor color = (players_.size() == 0) ? PlayerColor::BLACK : PlayerColor::WHITE;
+        // Assign color based on connection order - FIXED
+        PlayerColor color = (players_.size() == 0) ? PlayerColor::WHITE : PlayerColor::BLACK;
         std::string color_name = (color == PlayerColor::WHITE) ? "WHITE" : "BLACK";
         
         {

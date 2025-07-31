@@ -67,6 +67,7 @@ public:
     
     // Network interface for multiplayer
     void setNetworkInterface(NetworkInterface* network);
+    void setMyPlayerId(int player_id); // Set which player this client represents
     
     // Network move handling
     void applyNetworkMove(const std::string& move);
@@ -150,6 +151,7 @@ private:
     
     // Network interface for multiplayer
     NetworkInterface* network_interface_ = nullptr;
+    int my_player_id_ = -1; // -1 = both players (local game), 1 = white, 2 = black
     
     // Helper functions for user interaction
     void setupEventListeners();

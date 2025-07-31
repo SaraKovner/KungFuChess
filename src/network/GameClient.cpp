@@ -77,6 +77,7 @@ void GameClient::run() {
 
 void GameClient::receiveMessages() {
     char buffer[1024];
+    std::string accumulated_data;
     
     while (connected_) {
         int bytes_received = recv(socket_fd_, buffer, sizeof(buffer) - 1, 0);
@@ -87,14 +88,18 @@ void GameClient::receiveMessages() {
         }
         
         buffer[bytes_received] = '\0';
-        std::string message(buffer);
+        accumulated_data += std::string(buffer);
         
-        // Remove newline if present
-        if (!message.empty() && message.back() == '\n') {
-            message.pop_back();
+        // Process all complete messages (separated by newlines)
+        size_t pos = 0;
+        while ((pos = accumulated_data.find('\n')) != std::string::npos) {
+            std::string message = accumulated_data.substr(0, pos);
+            accumulated_data.erase(0, pos + 1);
+            
+            if (!message.empty()) {
+                handleMessage(message);
+            }
         }
-        
-        handleMessage(message);
     }
 }
 
@@ -157,7 +162,7 @@ void GameClient::simulateGameplay() {
         
         // Get current working directory and construct absolute path
         char current_dir[1024];
-        if (GetCurrentDirectory(sizeof(current_dir), current_dir)) {
+        if (GetCurrentDirectory(sizeof(current_dir), (LPTSTR)current_dir)) {
             std::string pieces_root = std::string(current_dir) + "\\assets\\pieces\\";
             std::cout << "🗂️ Using assets path: " << pieces_root << std::endl;
             
@@ -174,6 +179,10 @@ void GameClient::simulateGameplay() {
             std::cout << "🎯 Event listeners initializing..." << std::endl;
             // Connect network interface to game
             game.setNetworkInterface(this);
+            
+            // Set which player this client represents
+            int my_player_id = getMyPlayerId();
+            game.setMyPlayerId(my_player_id);
             
             // Connect game instance to client for receiving moves
             setGame(&game);
@@ -221,7 +230,16 @@ void GameClient::disconnect() {
 // NetworkInterface implementation
 void GameClient::sendMove(const std::string& move) {
     if (connected_) {
-        sendMessage("MOVE:" + move);
+        std::cout << "🌐 Sending to server: " << move << std::endl;
+        std::cout << "🔍 My color when sending: " << (my_color_ == PlayerColor::WHITE ? "WHITE" : 
+                                                    my_color_ == PlayerColor::BLACK ? "BLACK" : "UNKNOWN") << std::endl;
+        
+        // If this is an input command, send it directly without MOVE: prefix
+        if (move.find("INPUT:") == 0) {
+            sendMessage(move);
+        } else {
+            sendMessage("MOVE:" + move);
+        }
         std::cout << "🌐 Sent move to server: " << move << std::endl;
     }
 }
@@ -244,6 +262,8 @@ void GameClient::setGame(Game* game) {
 
 void GameClient::handleServerCommand(const std::string& command) {
     std::cout << "🎯 Processing server command: " << command << std::endl;
+    std::cout << "🔍 My color: " << (my_color_ == PlayerColor::WHITE ? "WHITE" : 
+                                  my_color_ == PlayerColor::BLACK ? "BLACK" : "UNKNOWN") << std::endl;
     
     // Parse player_id:cmd_type
     size_t colon_pos = command.find(':');
@@ -252,8 +272,17 @@ void GameClient::handleServerCommand(const std::string& command) {
         std::string cmd_type = command.substr(colon_pos + 1);
         
         int player_id = std::stoi(player_id_str);
+        int my_player_id = getMyPlayerId();
         
-        std::cout << "🎯 Applying server command: Player " << player_id << " -> " << cmd_type << std::endl;
+        std::cout << "🔍 Command for player: " << player_id << ", I am player: " << my_player_id << std::endl;
+        
+        // Skip commands that were already processed locally (to avoid double processing)
+        if (player_id == my_player_id) {
+            std::cout << "� Skipping own command (already processed locally): Player " << player_id << " -> " << cmd_type << std::endl;
+            return;
+        }
+        
+        std::cout << "🎯 Applying server command from other player: Player " << player_id << " -> " << cmd_type << std::endl;
         
         // Apply command to local game if we have a game instance
         if (game_) {

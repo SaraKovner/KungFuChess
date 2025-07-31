@@ -25,6 +25,11 @@ private:
     PlayerColor my_color_{PlayerColor::UNKNOWN};
     Game* game_{nullptr}; // Reference to the game instance
     
+    // Helper function to get player ID based on color
+    int getMyPlayerId() const {
+        return (my_color_ == PlayerColor::WHITE) ? 1 : 2;
+    }
+    
 public:
     GameClient(const std::string& server_address, int port = 8080);
     ~GameClient();
