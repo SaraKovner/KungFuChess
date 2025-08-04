@@ -631,7 +631,7 @@ void Game::run_game_loop(int num_iterations, bool is_with_graphics) {
             // Handle input in main loop where window exists
             int key = cv::waitKeyEx(30);
             if (key != -1) {
-                std::cout << "🔑 Key pressed: " << key << " (Player " << my_player_id_ << ")" << std::endl;
+                std::cout << "🔑 KEY DETECTED: " << key << " (Player " << my_player_id_ << ")" << std::endl;
                 // In network mode, only process keys for this client's player
                 if (network_interface_ && my_player_id_ > 0) {
                     if (my_player_id_ == 1 && keymap_player1_.find(key) != keymap_player1_.end()) {
@@ -694,12 +694,16 @@ void Game::update_cell2piece_map() {
 }
 
 void Game::process_input(int player_id, const std::string& cmd_type) {
+    std::cout << "🎯 PROCESS_INPUT CALLED: Player " << player_id << " -> " << cmd_type << std::endl;
+    
     // אם יש לנו network interface, שולחים את הקלט לשרת
     if (network_interface_) {
         std::string input_message = "INPUT:" + std::to_string(player_id) + ":" + cmd_type;
+        std::cout << "📤 SENDING TO SERVER: " << input_message << std::endl;
         network_interface_->sendMove(input_message);
         
         // לא מעבדים מקומית - נחכה לתגובה מהשרת לסנכרון מלא
+        std::cout << "✅ INPUT SENT TO SERVER" << std::endl;
         return;
     }
     
@@ -745,36 +749,34 @@ void Game::process_input_local(int player_id, const std::string& cmd_type) {
             selected_piece = nullptr;
             selected_piece_pos = {-1, -1};
         } else {
-            // Different position - validate and create move command
-            if (is_move_valid(selected_piece, selected_piece_pos, cursor_pos)) {
-                try {
-                    std::vector<std::pair<int,int>> move_params = {selected_piece_pos, cursor_pos};
-                    Command move_cmd(game_time_ms(), selected_piece->id, "move", move_params);
-                    
-                    // Process the move command through state machine
-                    auto piece_it = piece_by_id.find(move_cmd.piece_id);
-                    if (piece_it != piece_by_id.end()) {
-                        auto piece = piece_it->second;
-                        if (piece && piece->state) {
-                            // Update position map again before passing to piece
-                            update_cell2piece_map();
-                            piece->on_command(move_cmd, pos);
-                            
-                            // פרסום אירוע תזוזה
-                            bool isWhite = (piece->id.length() >= 2 && piece->id[1] == 'W');
-                            MoveEvent moveEvent(
-                                piece->id, 
-                                cellToChessNotation(selected_piece_pos.first, selected_piece_pos.second),
-                                cellToChessNotation(cursor_pos.first, cursor_pos.second),
-                                isWhite,
-                                game_time_ms()
-                            );
-                            eventManager_.publish(moveEvent, "move");
-                        }
+            // Different position - execute move without validation (server validates)
+            try {
+                std::vector<std::pair<int,int>> move_params = {selected_piece_pos, cursor_pos};
+                Command move_cmd(game_time_ms(), selected_piece->id, "move", move_params);
+                
+                // Process the move command through state machine
+                auto piece_it = piece_by_id.find(move_cmd.piece_id);
+                if (piece_it != piece_by_id.end()) {
+                    auto piece = piece_it->second;
+                    if (piece && piece->state) {
+                        // Update position map again before passing to piece
+                        update_cell2piece_map();
+                        piece->on_command(move_cmd, pos);
+                        
+                        // פרסום אירוע תזוזה
+                        bool isWhite = (piece->id.length() >= 2 && piece->id[1] == 'W');
+                        MoveEvent moveEvent(
+                            piece->id, 
+                            cellToChessNotation(selected_piece_pos.first, selected_piece_pos.second),
+                            cellToChessNotation(cursor_pos.first, cursor_pos.second),
+                            isWhite,
+                            game_time_ms()
+                        );
+                        eventManager_.publish(moveEvent, "move");
                     }
-                } catch (const std::exception& e) {
-                    // Handle move command errors silently
                 }
+            } catch (const std::exception& e) {
+                // Handle move command errors silently
             }
             
             // Reset selection
@@ -870,22 +872,20 @@ void Game::handle_mouse_click(int x, int y) {
     } else {
         if (selected_piece_player1_) {
             auto start_cell = selected_piece_player1_->current_cell();
-            if (is_move_valid(selected_piece_player1_, start_cell, {x, y})) {
-                std::vector<std::pair<int,int>> move_params = {start_cell, {x, y}};
-                Command move_cmd(game_time_ms(), selected_piece_player1_->id, "move", move_params, 1);
-                
-                // Send move to network if connected
-                if (network_interface_) {
-                    std::string move_str = std::to_string(start_cell.first) + "," + 
-                                         std::to_string(start_cell.second) + ":" + 
-                                         std::to_string(x) + "," + std::to_string(y) + 
-                                         ":" + selected_piece_player1_->id;
-                    network_interface_->sendMove(move_str);
-                    std::cout << "📤 Sent move to network: " << move_str << std::endl;
-                }
-                
-                enqueue_command(move_cmd);
+            std::vector<std::pair<int,int>> move_params = {start_cell, {x, y}};
+            Command move_cmd(game_time_ms(), selected_piece_player1_->id, "move", move_params, 1);
+            
+            // Send move to network if connected
+            if (network_interface_) {
+                std::string move_str = std::to_string(start_cell.first) + "," + 
+                                     std::to_string(start_cell.second) + ":" + 
+                                     std::to_string(x) + "," + std::to_string(y) + 
+                                     ":" + selected_piece_player1_->id;
+                network_interface_->sendMove(move_str);
+                std::cout << "📤 Sent move to network: " << move_str << std::endl;
             }
+            
+            enqueue_command(move_cmd);
         }
         cancel_selection();
     }
@@ -915,17 +915,15 @@ void Game::select_piece_at(int x, int y) {
 void Game::confirm_move() {
     if (selected_piece_player1_ && is_selecting_target_player1_) {
         auto start_cell = selected_piece_player1_->current_cell();
-        if (is_move_valid(selected_piece_player1_, start_cell, cursor_pos_player1_)) {
-            std::vector<std::pair<int,int>> move_params = {start_cell, cursor_pos_player1_};
-            Command move_cmd(game_time_ms(), selected_piece_player1_->id, "move", move_params, 1);
-            enqueue_command(move_cmd);
-            
-            // Broadcast move to network
-            std::string network_move = selected_piece_player1_->id + ":" + 
-                                     std::to_string(start_cell.first) + "," + std::to_string(start_cell.second) + ":" +
-                                     std::to_string(cursor_pos_player1_.first) + "," + std::to_string(cursor_pos_player1_.second);
-            broadcastMove(network_move);
-        }
+        std::vector<std::pair<int,int>> move_params = {start_cell, cursor_pos_player1_};
+        Command move_cmd(game_time_ms(), selected_piece_player1_->id, "move", move_params, 1);
+        enqueue_command(move_cmd);
+        
+        // Broadcast move to network
+        std::string network_move = selected_piece_player1_->id + ":" + 
+                                 std::to_string(start_cell.first) + "," + std::to_string(start_cell.second) + ":" +
+                                 std::to_string(cursor_pos_player1_.first) + "," + std::to_string(cursor_pos_player1_.second);
+        broadcastMove(network_move);
     }
     cancel_selection();
 }
@@ -1041,93 +1039,7 @@ std::string Game::get_position_key(int x, int y) {
     return std::to_string(x) + "," + std::to_string(y);
 }
 
-bool Game::is_move_valid(PiecePtr piece, const std::pair<int,int>& from, const std::pair<int,int>& to) {
-    if (!piece || !piece->state || !piece->state->moves) {
-        std::cout << "MOVE_VALIDATION: Invalid piece or state" << std::endl;
-        return false;
-    }
-    
-    std::cout << "MOVE_VALIDATION: " << piece->id << " מנסה לזוז מ-(" << from.first << "," << from.second 
-              << ") ל-(" << to.first << "," << to.second << ")" << std::endl;
-    
-    // Check if piece can move (not in rest state)
-    if (piece->state->name == "long_rest" || piece->state->name == "short_rest") {
-        return false;
-    }
-    
-    // Check if piece is currently moving
-    if (piece->state->name == "move" || piece->state->name == "jump") {
-        return false;
-    }
-    
-    // Check bounds
-    if (to.first < 0 || to.first >= board.H_cells || 
-        to.second < 0 || to.second >= board.W_cells) {
-        return false;
-    }
-    
-    // Check if trying to move to same position
-    if (from == to) {
-        return false;
-    }
-    
-    // Verify piece is actually at the 'from' position
-    auto current_cell = piece->current_cell();
-    if (current_cell != from) {
-        return false;
-    }
-    
-    // Update position map to ensure accuracy
-    update_cell2piece_map();
-    
-    // Check if destination has piece of same color
-    auto dest_it = pos.find(to);
-    if (dest_it != pos.end() && !dest_it->second.empty()) {
-        auto dest_piece = dest_it->second[0];
-        if (are_same_color(piece, dest_piece)) {
-            return false;
-        }
-    }
-    
-    // Create set of occupied cells for path checking
-    std::unordered_set<std::pair<int,int>, PairHash> occupied_cells;
-    for (const auto& [cell, pieces_at_cell] : pos) {
-        if (!pieces_at_cell.empty()) {
-            occupied_cells.insert(cell);
-            // std::cout << "OCCUPIED CELL: (" << cell.first << "," << cell.second << ") בה נמצא " << pieces_at_cell[0]->id << std::endl;
-        }
-    }
-    
-    // Check if target cell has pieces and what team they are
-    auto target_pieces_it = pos.find(to);
-    if (target_pieces_it != pos.end() && !target_pieces_it->second.empty()) {
-        auto target_piece = target_pieces_it->second[0];
-        if (target_piece && target_piece->id.length() >= 2 && piece->id.length() >= 2) {
-            char moving_team = piece->id[1];
-            char target_team = target_piece->id[1];
-            std::cout << "MOVE_VALIDATION: " << piece->id << " (team " << moving_team 
-                      << ") wants to move to cell with " << target_piece->id << " (team " << target_team << ")" << std::endl;
-            
-            if (moving_team == target_team) {
-                std::cout << "MOVE_VALIDATION: BLOCKED - Same team!" << std::endl;
-                return false; // Block same-team moves
-            }
-        }
-    }
-    
-    std::cout << "CALLING piece->state->moves->is_valid() עם " << occupied_cells.size() << " תאים תפוסים" << std::endl;
-    bool result = piece->state->moves->is_valid(from, to, occupied_cells);
-    std::cout << "MOVE_VALIDATION: Result = " << (result ? "VALID" : "INVALID") << std::endl;
-    
-    if (!result) {
-        std::cout << "MOVE FAILED ANALYSIS:" << std::endl;
-        std::cout << "  Piece type: " << piece->id[0] << std::endl;
-        std::cout << "  Distance: dx=" << abs(to.first - from.first) << ", dy=" << abs(to.second - from.second) << std::endl;
-        std::cout << "  Path blocking check needed..." << std::endl;
-    }
-    
-    return result;
-}
+
 
 char Game::get_piece_color(PiecePtr piece) {
     if (!piece || piece->id.size() < 2) {

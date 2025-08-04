@@ -20,6 +20,7 @@
 #include "../../shared/game_logic/PieceFactory.hpp"
 #include "../../shared/graphics/img/ImgFactory.hpp"
 #include "../../shared/graphics/img/MockImg.hpp"
+#include "../game_logic/ServerGameEngine.hpp"
 
 enum class PlayerColor { WHITE, BLACK };
 
@@ -43,8 +44,11 @@ private:
     std::mutex queue_mutex_;
     
     // Game engine - server is authoritative
-    std::unique_ptr<Game> game_;
+    std::unique_ptr<ServerGameEngine> server_engine_;
     std::mutex game_mutex_;
+    
+    // Server-side player state tracking
+    std::mutex player_state_mutex_;
 
 public:
     GameServer(int port = 8080);
@@ -63,10 +67,25 @@ private:
     
     // Game logic functions
     void initializeGame();
-    bool validateMove(int player_id, const std::string& move);
-    void applyMove(int player_id, const std::string& move);
+    bool validateInput(int player_id, const std::string& cmd_type);
+    void processValidatedInput(int player_id, const std::string& cmd_type);
     void broadcastGameState();
     void checkWinCondition();
+    
+    // Server-side game state validation
+    bool isValidCursorMove(int player_id, const std::string& direction);
+    bool isValidPieceSelection(int player_id);
+    bool isValidPieceMove(int player_id);
+    bool validateSelectCommand(int player_id);
+    
+    // Server-side player state
+    struct PlayerState {
+        std::pair<int, int> cursor_pos = {-1, -1};
+        std::pair<int, int> selected_piece_pos = {-1, -1};
+        bool has_selected_piece = false;
+    };
+    PlayerState player1_state_;
+    PlayerState player2_state_;
     
     // Utility functions
     void sendToClient(int socket, const std::string& message);
