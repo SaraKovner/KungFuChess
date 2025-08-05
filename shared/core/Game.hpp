@@ -1,3 +1,14 @@
+/**
+ * @file Game.hpp
+ * @brief מחלקת המשחק הראשית - מנהלת את כל לוגיקת המשחק, גרפיקה ותקשורת רשת
+ * 
+ * מחלקה זו מיישמת את מנוע המשחק המרכזי עם תמיכה ב:
+ * - Client-Server Architecture עם סנכרון בזמן אמת
+ * - State Machine Pattern לניהול מצבי כלים
+ * - Observer Pattern למעקב אחר אירועי משחק
+ * - Multithreading לעיבוד מקבילי של קלט, גרפיקה ורשת
+ */
+
 #pragma once
 #include "../graphics/img/ImgFactory.hpp"
 #include "Common.hpp"
@@ -23,12 +34,12 @@
 #include <fstream>
 #include <sstream>
 #include "../graphics/GraphicsFactory.hpp"
-// Threading support from CTD25_1
+// תמיכה ב-Threading לעיבוד מקבילי
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
 
-// Observer pattern includes
+// כלולים עבור Observer Pattern - מערכת אירועים מבוזרת
 #include "../observer/headers/GameEventManager.hpp"
 #include "../observer/headers/GameStateEvent.hpp"
 #include "../observer/headers/WhiteMovesTable.hpp"
@@ -48,53 +59,136 @@ namespace fs = std::experimental::filesystem;
 #error "Filesystem support not found"
 #endif
 
+/**
+ * @class InvalidBoard
+ * @brief חריגה הנזרקת כאשר לוח המשחק לא תקין
+ * 
+ * נזרקת במקרים כמו: לוח ריק מכלים, מימדים לא תקינים, או שגיאות בארכיטקטורה
+ */
 class InvalidBoard : public std::runtime_error {
 public:
     explicit InvalidBoard(const std::string& msg) : std::runtime_error(msg) {}
 };
 
+/**
+ * @class Game
+ * @brief מנוע המשחק הראשי - מנהל את כל ההיבטים של משחק השחמט
+ * 
+ * מחלקה זו מיישמת את כל הלוגיקה המרכזית של המשחק:
+ * 
+ * ארכיטקטורה:
+ * - Client-Server: תמיכה במשחק רשת עם סנכרון בזמן אמת
+ * - State Machine: כל כלי עובר דרך מצבים (idle, move, rest)
+ * - Observer Pattern: מערכת אירועים למעקב אחר תנועות ותפיסות
+ * - Multithreading: עיבוד מקבילי של קלט, גרפיקה ורשת
+ * 
+ * תכונות מרכזיות:
+ * - משחק 2 שחקנים עם סמנים צבעוניים
+ * - אנימציות רציפות לכל כלי
+ * - מערכת קול ואפקטים
+ * - מעקב אחר תנועות וניקוד
+ */
 class Game {
 public:
+    /**
+     * @brief בנאי בסיסי - יוצר משחק עם כלים ולוח
+     * @param pcs רשימת כלי המשחק
+     * @param board לוח המשחק
+     */
     Game(std::vector<PiecePtr> pcs, Board board);
+    
+    /**
+     * @brief בנאי מתקדם - יוצר משחק עם רקע גרפי
+     * @param pcs רשימת כלי המשחק
+     * @param board לוח המשחק
+     * @param background_img תמונת רקע לממשק המשחק
+     */
     Game(std::vector<PiecePtr> pcs, Board board, ImgPtr background_img);
     
-    // Move constructor and assignment operator
+    // Move constructor and assignment operator - תמיכה ב-RAII
     Game(Game&& other) noexcept;
     Game& operator=(Game&& other) noexcept;
     
-    // Delete copy constructor and assignment operator
+    // מניעת העתקה - המשחק הוא singleton בזיכרון
     Game(const Game&) = delete;
     Game& operator=(const Game&) = delete;
 
-    // --- main public API ---
+    // === API ציבורי ראשי ===
+    
+    /**
+     * @brief מחזיר זמן המשחק במילישניות מתחילת המשחק
+     * @return זמן במילישניות
+     */
     int game_time_ms() const;
+    
+    /**
+     * @brief יוצר עותק של לוח המשחק הנוכחי
+     * @return עותק של הלוח
+     */
     Board clone_board() const;
 
-    // Mirror Python run() behaviour with enhanced threading support
+    /**
+     * @brief מריץ את לולאת המשחק הראשית
+     * @param num_iterations מספר איטרציות (-1 = אינסופי)
+     * @param is_with_graphics האם להציג גרפיקה
+     * 
+     * פונקציה זו מנהלת את כל המשחק:
+     * - לולאת עדכון כלים (State Machine)
+     * - עיבוד קלט משחקנים
+     * - רינדור גרפיקה ואנימציות
+     * - טיפול בתקשורת רשת
+     */
     void run(int num_iterations = -1, bool is_with_graphics = true);
     
-    // Network interface for multiplayer
-    void setNetworkInterface(NetworkInterface* network);
-    void setMyPlayerId(int player_id); // Set which player this client represents
+    // === ממשק רשת למשחק מרובה משתתפים ===
     
-    // Network move handling
+    /**
+     * @brief מגדיר ממשק רשת למשחק client-server
+     * @param network מצביע לממשק הרשת
+     */
+    void setNetworkInterface(NetworkInterface* network);
+    
+    /**
+     * @brief מגדיר איזה שחקן הקליינט הזה מייצג
+     * @param player_id מזהה השחקן (1=לבן, 2=שחור)
+     */
+    void setMyPlayerId(int player_id);
+    
+    /**
+     * @brief מיישם תנועה שהתקבלה מהרשת
+     * @param move מחרוזת התנועה בפורמט "piece_id:from_x,from_y:to_x,to_y"
+     */
     void applyNetworkMove(const std::string& move);
+    
+    /**
+     * @brief שולח תנועה לכל הקליינטים ברשת
+     * @param move מחרוזת התנועה לשליחה
+     */
     void broadcastMove(const std::string& move);
     
-    // Server-side input processing (public for GameServer)
+    /**
+     * @brief מעבד קלט מהשרת (לסנכרון)
+     * @param player_id מזהה השחקן
+     * @param cmd_type סוג הפקודה (up/down/left/right/select)
+     * 
+     * פונקציה זו מיועדת לעיבוד פקודות שאושרו על ידי השרת
+     */
     void processServerInput(int player_id, const std::string& cmd_type);
 
-    std::vector<PiecePtr> pieces;
-    Board board;
+    // === משתנים ציבוריים ===
+    std::vector<PiecePtr> pieces;  ///< רשימת כל כלי המשחק
+    Board board;                   ///< לוח המשחק (8x8)
     
-    // Background image for game interface
-    ImgPtr background_img_;
+    ImgPtr background_img_;        ///< תמונת רקע לממשק המשחק
     
-    // helper for tests to inject commands
+    /**
+     * @brief פונקציית עזר לבדיקות - מוסיפה פקודה לתור
+     * @param cmd הפקודה להוספה
+     */
     void enqueue_command(const Command& cmd);
 
 private:
-    // --- helpers mirroring Python implementation ---
+    // === פונקציות עזר מרכזיות ===
     void start_user_input_thread();
     void run_game_loop(int num_iterations, bool is_with_graphics);
     void update_cell2piece_map();

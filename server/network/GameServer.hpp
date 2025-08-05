@@ -14,7 +14,7 @@
     #pragma comment(lib, "ws2_32.lib")
 #endif
 
-// Game engine includes
+// הכללות מנוע המשחק
 #include "../../shared/core/Game.hpp"
 #include "../../shared/core/Board.hpp"
 #include "../../shared/game_logic/PieceFactory.hpp"
@@ -22,74 +22,85 @@
 #include "../../shared/graphics/img/MockImg.hpp"
 #include "../game_logic/ServerGameEngine.hpp"
 
+// צבעי שחקנים
 enum class PlayerColor { WHITE, BLACK };
 
+/**
+ * מבנה חיבור שחקן - מידע על שחקן מחובר
+ */
 struct PlayerConnection {
-    int socket_fd;
-    PlayerColor color;
-    bool connected;
-    std::string name;
+    int socket_fd;        // מזהה socket של החיבור
+    PlayerColor color;    // צבע השחקן (לבן/שחור)
+    bool connected;       // האם מחובר
+    std::string name;     // שם השחקן
 };
 
+/**
+ * מחלקת שרת המשחק - מנהלת את כל התקשורת עם הלקוחות
+ * אחראית על לוגיקת המשחק ומסנכרנת בין השחקנים
+ */
 class GameServer {
 private:
-    int server_socket_;
-    int port_;
-    std::atomic<bool> running_{false};
-    std::vector<PlayerConnection> players_;
-    std::mutex players_mutex_;
+    int server_socket_;                      // socket ראשי של השרת
+    int port_;                               // פורט השרת
+    std::atomic<bool> running_{false};       // האם השרת פועל
+    std::vector<PlayerConnection> players_;  // רשימת שחקנים מחוברים
+    std::mutex players_mutex_;               // נעילה לרשימת שחקנים
     
-    // Command queue from all clients
+    // תור פקודות מכל הלקוחות
     std::queue<std::string> command_queue_;
     std::mutex queue_mutex_;
     
-    // Game engine - server is authoritative
+    // מנוע המשחק - השרת הוא הסמכות העליונה
     std::unique_ptr<ServerGameEngine> server_engine_;
     std::mutex game_mutex_;
     
-    // Server-side player state tracking
+    // מעקב מצב שחקנים בצד השרת
     std::mutex player_state_mutex_;
 
 public:
-    GameServer(int port = 8080);
-    ~GameServer();
+    // בנאי והרס
+    GameServer(int port = 8080);  // בנאי עם פורט ברירת מחדל
+    ~GameServer();               // הרס - מנקה משאבים
     
-    bool start();
-    void run();
-    void stop();
+    // פונקציות שליטה בשרת
+    bool start();  // התחלת השרת ואיניציאליזציה
+    void run();    // לולאת ראשית של השרת
+    void stop();   // עצירת השרת וניקוי
     
 private:
-    void acceptClients();
-    void handleClient(int client_socket, PlayerColor color);
-    void broadcastMessage(const std::string& message);
-    void processCommands();
-    void handleInputCommand(const std::string& command);  // טיפול בקלט מקליינטים - שלח פקודות חזרה
+    // פונקציות רשת
+    void acceptClients();                                    // קבלת חיבורי לקוחות חדשים
+    void handleClient(int client_socket, PlayerColor color); // טיפול בלקוח ספציפי
+    void broadcastMessage(const std::string& message);      // שידור הודעה לכל הלקוחות
+    void processCommands();                                  // עיבוד פקודות מהתור
+    void handleInputCommand(const std::string& command);     // טיפול בקלט מלקוחות - שליחת פקודות חזרה
     
-    // Game logic functions
-    void initializeGame();
-    bool validateInput(int player_id, const std::string& cmd_type);
-    void processValidatedInput(int player_id, const std::string& cmd_type);
-    void broadcastGameState();
-    void checkWinCondition();
+    // פונקציות לוגיקת משחק
+    void initializeGame();                                           // איניציאליזציה של המשחק
+    bool validateInput(int player_id, const std::string& cmd_type);  // אימות קלט שחקן
+    void processValidatedInput(int player_id, const std::string& cmd_type); // עיבוד קלט מאומת
+    void broadcastGameState();                                       // שידור מצב המשחק
+    void checkWinCondition();                                        // בדיקת תנאי ניצחון
     
-    // Server-side game state validation
-    bool isValidCursorMove(int player_id, const std::string& direction);
-    bool isValidPieceSelection(int player_id);
-    bool isValidPieceMove(int player_id);
-    bool validateSelectCommand(int player_id);
+    // אימות מצב משחק בצד השרת
+    bool isValidCursorMove(int player_id, const std::string& direction); // אימות תנועת סמן
+    bool isValidPieceSelection(int player_id);                           // אימות בחירת כלי
+    bool isValidPieceMove(int player_id);                                // אימות תנועת כלי
+    bool validateSelectCommand(int player_id);                           // אימות פקודת בחירה
     
-    // Server-side player state
+    // מצב שחקן בצד השרת
     struct PlayerState {
-        std::pair<int, int> cursor_pos = {-1, -1};
-        std::pair<int, int> selected_piece_pos = {-1, -1};
-        bool has_selected_piece = false;
+        std::pair<int, int> cursor_pos = {-1, -1};          // מיקום הסמן
+        std::pair<int, int> selected_piece_pos = {-1, -1};  // מיקום הכלי הנבחר
+        bool has_selected_piece = false;                    // האם יש כלי נבחר
     };
-    PlayerState player1_state_;
-    PlayerState player2_state_;
+    PlayerState player1_state_;  // מצב שחקן 1
+    PlayerState player2_state_;  // מצב שחקן 2
     
-    // Utility functions
-    void sendToClient(int socket, const std::string& message);
-    std::string receiveFromClient(int socket);
-    void initializeWinsock();
-    void cleanupWinsock();
+    // פונקציות עזר
+    void sendToClient(int socket, const std::string& message);  // שליחת הודעה ללקוח ספציפי
+    std::string receiveFromClient(int socket);                  // קבלת הודעה מלקוח
+    void initializeWinsock();                                   // איניציאליזציה של Winsock (Windows)
+    void cleanupWinsock();                                      // ניקוי Winsock
 };
