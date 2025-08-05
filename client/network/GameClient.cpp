@@ -6,6 +6,7 @@
 #include <chrono>
 #include <memory>
 #include <windows.h>
+#include <stdexcept>
 
 GameClient::GameClient(const std::string& server_address, int port) 
     : server_address_(server_address), server_port_(port), socket_fd_(-1) {
@@ -261,6 +262,7 @@ void GameClient::setGame(Game* game) {
 }
 
 void GameClient::handleServerCommand(const std::string& command) {
+    std::cout << "📨 RECEIVED FROM SERVER: " << command << std::endl;
     std::cout << "🎯 Processing server command: " << command << std::endl;
     std::cout << "🔍 Game instance: " << (game_ ? "EXISTS" : "NULL") << std::endl;
     std::cout << "🔍 My color: " << (my_color_ == PlayerColor::WHITE ? "WHITE" : 
@@ -272,21 +274,35 @@ void GameClient::handleServerCommand(const std::string& command) {
         std::string player_id_str = command.substr(0, colon_pos);
         std::string cmd_type = command.substr(colon_pos + 1);
         
-        int player_id = std::stoi(player_id_str);
-        int my_player_id = getMyPlayerId();
-        
-        std::cout << "🔍 Command for player: " << player_id << ", I am player: " << my_player_id << std::endl;
-        
-        // Process all commands from server to ensure synchronization
-        // The server is the authoritative source for all game state
-        std::cout << "🎯 Applying server command: Player " << player_id << " -> " << cmd_type << std::endl;
-        
-        // Apply command to local game if we have a game instance
-        if (game_) {
-            game_->processServerInput(player_id, cmd_type);
-            std::cout << "✅ Server command applied to local game" << std::endl;
-        } else {
-            std::cerr << "❌ No game instance to apply server command to" << std::endl;
+        try {
+            int player_id = std::stoi(player_id_str);
+            int my_player_id = getMyPlayerId();
+            
+            std::cout << "🔍 Command for player: " << player_id << ", I am player: " << my_player_id << std::endl;
+            
+            // Handle rejected commands
+            if (cmd_type == "rejected") {
+                std::cout << "❌ Server rejected command from player " << player_id << std::endl;
+                return;
+            }
+            
+            // Process all commands from server to ensure synchronization
+            // The server is the authoritative source for all game state
+            std::cout << "🎯 Applying server command: Player " << player_id << " -> " << cmd_type << std::endl;
+            
+            // Apply command to local game if we have a game instance
+            if (game_) {
+                try {
+                    game_->processServerInput(player_id, cmd_type);
+                    std::cout << "✅ Server command applied to local game" << std::endl;
+                } catch (const std::exception& e) {
+                    std::cerr << "❌ Error applying server command: " << e.what() << std::endl;
+                }
+            } else {
+                std::cerr << "❌ No game instance to apply server command to" << std::endl;
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "❌ Error parsing server command: " << e.what() << std::endl;
         }
     } else {
         std::cerr << "❌ Invalid server command format: " << command << std::endl;

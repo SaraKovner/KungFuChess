@@ -118,6 +118,7 @@ void GameServer::handleClient(int client_socket, PlayerColor color) {
     while (running_) {
         std::string message = receiveFromClient(client_socket);
         if (message.empty()) {
+            std::cout << "📤 Client " << ((color == PlayerColor::WHITE) ? "WHITE" : "BLACK") << " disconnected" << std::endl;
             break; // Client disconnected
         }
         
@@ -146,7 +147,7 @@ void GameServer::handleClient(int client_socket, PlayerColor color) {
         }
     }
     
-    std::cout << "Client disconnected" << std::endl;
+    std::cout << "📤 Client " << ((color == PlayerColor::WHITE) ? "WHITE" : "BLACK") << " handler thread ended" << std::endl;
 }
 
 void GameServer::broadcastMessage(const std::string& message) {
@@ -175,13 +176,21 @@ void GameServer::processCommands() {
 
 void GameServer::sendToClient(int socket, const std::string& message) {
     std::string msg = message + "\n";
-    send(socket, msg.c_str(), msg.length(), 0);
+    int result = send(socket, msg.c_str(), msg.length(), 0);
+    if (result <= 0) {
+        std::cout << "📤 Failed to send message to client: " << message << std::endl;
+    }
 }
 
 std::string GameServer::receiveFromClient(int socket) {
     char buffer[1024] = {0};
     int bytes_received = recv(socket, buffer, sizeof(buffer) - 1, 0);
     if (bytes_received <= 0) {
+        if (bytes_received == 0) {
+            std::cout << "📤 Client closed connection gracefully" << std::endl;
+        } else {
+            std::cout << "📤 Client connection error: " << bytes_received << std::endl;
+        }
         return "";
     }
     
@@ -220,21 +229,102 @@ void GameServer::handleInputCommand(const std::string& command) {
             
             std::cout << "🎯 Input: Player " << player_id << " -> " << cmd_type << std::endl;
             
-            // Always broadcast the command to all clients for cursor movement
-            std::string server_command = "SERVER_CMD:" + std::to_string(player_id) + ":" + cmd_type;
-            broadcastMessage(server_command);
-            
-            // Process input through server game engine if available
-            {
-                std::lock_guard<std::mutex> lock(game_mutex_);
-                if (game_) {
-                    game_->processServerInput(player_id, cmd_type);
-                    // Check for win condition
-                    checkWinCondition();
+            // SERVER VALIDATES INPUT FIRST
+            if (validateInput(player_id, cmd_type)) {
+                std::cout << "✅ Input validated - processing" << std::endl;
+                
+                // Process through server game engine
+                {
+                    std::lock_guard<std::mutex> lock(game_mutex_);
+                    if (server_engine_) {
+                        std::cout << "🎮 Processing input in server game engine..." << std::endl;
+                        
+                        if (cmd_type == "up" || cmd_type == "down" || cmd_type == "left" || cmd_type == "right") {
+                            server_engine_->updatePlayerCursor(player_id, cmd_type);
+                        } else if (cmd_type == "select") {
+                            server_engine_->processSelect(player_id);
+                        }
+                        
+                        std::cout << "✅ Server game processing completed" << std::endl;
+                    } else {
+                        std::cout << "❌ No server engine available" << std::endl;
+                    }
                 }
+                
+                // Check win condition AFTER releasing the lock
+                std::cout << "🏆 Checking win condition..." << std::endl;
+                checkWinCondition();
+                
+                // ALWAYS BROADCAST - even if no visible change occurred
+                std::cout << "📡 About to broadcast to clients..." << std::endl;
+                std::string server_command = "SERVER_CMD:" + std::to_string(player_id) + ":" + cmd_type;
+                broadcastMessage(server_command);
+                std::cout << "📡 Broadcast completed" << std::endl;
+                
+                std::cout << "✅ Valid input processed and broadcasted" << std::endl;
+            } else {
+                std::cout << "❌ Input rejected - invalid move" << std::endl;
+                // Still broadcast rejection so client knows server received it
+                std::string reject_command = "SERVER_CMD:" + std::to_string(player_id) + ":rejected";
+                broadcastMessage(reject_command);
+                std::cout << "📡 Rejection broadcasted" << std::endl;
             }
-            
-            std::cout << "✅ Input processed by server game engine" << std::endl;
+        } else {
+            std::cout << "❌ Invalid input format: " << command << std::endl;
         }
+    } else {
+        std::cout << "❌ Not an INPUT command: " << command << std::endl;
+    }
+}
+bool GameServer::validateInput(int player_id, const std::string& cmd_type) {
+    std::lock_guard<std::mutex> lock(game_mutex_);
+    if (!server_engine_) return false;
+    
+    // Basic validation - player exists and game is running
+    if (player_id < 1 || player_id > 2) return false;
+    
+    // Movement commands are always valid (cursor movement)
+    if (cmd_type == "up" || cmd_type == "down" || cmd_type == "left" || cmd_type == "right") {
+        return true; // Always allow cursor movement
+    }
+    
+    // Selection commands - basic validation
+    if (cmd_type == "select") {
+        return (player_id == 1 || player_id == 2); // Basic player validation
+    }
+    
+    // Exit is always valid
+    if (cmd_type == "exit") {
+        return true;
+    }
+    
+    return false;
+}
+void GameServer::initializeGame() {
+    std::cout << "🎮 Initializing server game engine..." << std::endl;
+    
+    try {
+        server_engine_ = std::make_unique<ServerGameEngine>();
+        server_engine_->initializeStandardGame();
+        
+        std::cout << "✅ Server game engine initialized successfully" << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Failed to initialize game: " << e.what() << std::endl;
+    }
+}
+
+void GameServer::broadcastGameState() {
+    std::lock_guard<std::mutex> lock(game_mutex_);
+    if (server_engine_) {
+        // TODO: Serialize game state and broadcast to all clients
+        std::cout << "📡 Broadcasting game state to all clients" << std::endl;
+    }
+}
+
+void GameServer::checkWinCondition() {
+    std::lock_guard<std::mutex> lock(game_mutex_);
+    if (server_engine_) {
+        // TODO: Check if game is won and broadcast result
+        std::cout << "🏆 Checking win condition..." << std::endl;
     }
 }

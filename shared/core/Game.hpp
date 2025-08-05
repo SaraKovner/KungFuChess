@@ -177,7 +177,6 @@ private:
     void check_captures();
     void capture_piece(PiecePtr captured, PiecePtr captor);
     std::string get_position_key(int x, int y);
-    bool is_move_valid(PiecePtr piece, const std::pair<int,int>& from, const std::pair<int,int>& to);
     char get_piece_color(PiecePtr piece);
     bool are_same_color(PiecePtr piece1, PiecePtr piece2);
     
