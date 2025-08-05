@@ -4,7 +4,7 @@ Write-Host "🎮 Starting KungFu Chess Clients..." -ForegroundColor Green
 
 # Get the root directory (where this script is located)
 $rootDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$clientExe = Join-Path $rootDir "build\Release\KungFuChess_Client.exe"
+$clientExe = Join-Path $rootDir "build\Release\client.exe"
 
 # Check if the client executable exists
 if (-not (Test-Path $clientExe)) {

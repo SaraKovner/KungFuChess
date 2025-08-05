@@ -6,57 +6,58 @@
 
 ```
 KungFuChess/
-├── src/                           # קוד מקור ראשי
-│   ├── core/                      # מנוע המשחק הבסיסי
-│   │   ├── Game.hpp/cpp          # מנוע המשחק הראשי
-│   │   ├── Board.hpp/cpp         # לוח המשחק
-│   │   ├── Piece.hpp             # כלי המשחק
-│   │   ├── State.hpp             # מצבי הכלים
-│   │   ├── Physics.hpp           # פיזיקת המשחק
-│   │   └── Common.hpp            # הגדרות משותפות
-│   ├── graphics/                  # מערכת גרפיקה
-│   │   ├── Graphics.hpp/cpp      # גרפיקה ואנימציות
-│   │   ├── GraphicsFactory.hpp   # יצרן גרפיקה
-│   │   └── img/                  # מערכת תמונות OpenCV
-│   │       ├── Img.hpp           # ממשק תמונה
-│   │       ├── ImgFactory.hpp    # יצרן תמונות
-│   │       ├── MockImg.hpp       # Mock לבדיקות
-│   │       └── OpenCvImg.hpp/cpp # יישום OpenCV
-│   ├── game_logic/               # לוגיקת המשחק
-│   │   ├── Moves.hpp/cpp         # מערכת תנועות
-│   │   ├── CaptureRules.hpp/cpp  # חוקי לכידה
-│   │   ├── PieceFactory.hpp      # יצרן הכלים
-│   │   └── PhysicsFactory.hpp    # יצרן פיזיקה
-│   ├── ui/                       # ממשק משתמש
-│   │   └── Command.hpp           # מערכת פקודות
-│   ├── utils/                    # כלי עזר
-│   │   └── json/                 # ספריית JSON (nlohmann)
-│   └── main.cpp                  # נקודת כניסה
-├── observer/                     # מערכת Observer Pattern
-│   ├── headers/                  # כותרות Observer
-│   │   ├── GameEventManager.hpp  # מנהל אירועים
-│   │   ├── SoundManager.hpp      # מנהל קול
-│   │   ├── Observer.hpp          # ממשק Observer
-│   │   └── Subject.hpp           # ממשק Subject
-│   └── src/                      # יישום Observer
-├── assets/                       # נכסי המשחק
-│   ├── pieces/                   # כלי המשחק (BB, BW, KB, KW, NB, NW, PB, PW, QB, QW, RB, RW)
-│   │   └── [PIECE]/states/       # מצבי הכלים (idle, move, jump, rest)
-│   │       ├── sprites/          # תמונות אנימציה
-│   │       └── config.json       # הגדרות מצב
-│   └── sounds/                   # קבצי שמע
-├── OpenCV_451/                  # ספריית OpenCV
-│   ├── bin/                      # DLL files
-│   └── include/                  # Header files
-├── scripts/                      # סקריפטי בנייה והרצה
-│   ├── build.ps1                # סקריפט בנייה
-│   └── run.ps1                  # סקריפט הרצה
-├── tests/                        # בדיקות יחידה
-│   ├── test_*.cpp               # קבצי בדיקה
-│   └── catch.hpp                # מסגרת בדיקות
-├── docs/                         # תיעוד
-├── CMakeLists.txt               # קובץ בנייה ראשי
-└── .gitignore                   # Git ignore
+├── shared/                       # Shared code for all components
+│   ├── core/                     # Core game engine
+│   │   ├── Game.hpp/cpp         # Main game engine
+│   │   ├── Board.hpp/cpp        # Game board
+│   │   ├── Piece.hpp            # Game pieces
+│   │   ├── State.hpp            # Piece states
+│   │   ├── Physics.hpp          # Game physics
+│   │   └── Common.hpp           # Common definitions
+│   ├── graphics/                # Graphics system
+│   │   ├── Graphics.hpp/cpp     # Graphics and animations
+│   │   ├── GraphicsFactory.hpp  # Graphics factory
+│   │   └── img/                 # OpenCV image system
+│   ├── game_logic/              # Game logic
+│   │   ├── Moves.hpp/cpp        # Movement system
+│   │   ├── CaptureRules.hpp/cpp # Capture rules
+│   │   ├── PieceFactory.hpp     # Piece factory
+│   │   └── PhysicsFactory.hpp   # Physics factory
+│   ├── network/                 # Network interface
+│   │   └── NetworkInterface.hpp # Network interface
+│   ├── observer/                # Observer Pattern system
+│   │   ├── headers/             # Observer headers
+│   │   ├── src/                 # Observer implementation
+│   │   └── run*.ps1             # Run scripts
+│   ├── ui/                      # User interface
+│   │   └── Command.hpp          # Game commands
+│   └── utils/                   # Utilities
+│       └── json/                # JSON library
+├── server/                      # Game server
+│   ├── network/                 # Server network
+│   │   ├── GameServer.hpp/cpp   # Game server
+│   │   └── GameServerLogic.cpp  # Server logic
+│   └── main_server.cpp          # Server entry point
+├── client/                      # Game client
+│   ├── network/                 # Client network
+│   │   └── GameClient.hpp/cpp   # Game client
+│   ├── ui/                      # Client UI
+│   │   └── Command.hpp          # Client commands
+│   └── main_client.cpp          # Client entry point
+├── assets/                      # Game assets
+│   ├── pieces/                  # Game pieces (sprites)
+│   ├── client_assets/           # Client assets
+│   ├── sounds/                  # Sound files
+│   └── game_rules/              # Game rules
+├── OpenCV_451/                  # OpenCV library
+│   ├── bin/                     # DLL files
+│   └── include/                 # OpenCV headers
+├── scripts/                     # Build and run scripts
+├── tests/                       # Unit tests
+├── docs/                        # Documentation
+├── CMakeLists.txt              # Main build file
+├── run_clients.ps1             # Run 2 clients
+└── run_tests_fixed.ps1         # Run tests
 ```
 
 ## תכונות מרכזיות
@@ -106,13 +107,25 @@ KungFuChess/
 .\scripts\build.ps1
 ```
 
-### הרצה:
+### הרצה - משחק Client-Server:
 ```powershell
-# הרץ את המשחק
-.\scripts\run.ps1
+# 1. הרץ שרת (בחלון נפרד)
+.\build\Release\server.exe
 
-# או הרץ את מערכת ה-Observer
+# 2. הרץ 2 לקוחות (אוטומטית)
+.\run_clients.ps1
+
+# או הרץ לקוח יחיד
+.\build\Release\client.exe
+```
+
+### הרצה - מערכת Observer:
+```powershell
+# הרץ Observer demo
 .\observer\run.ps1
+
+# או Observer פשוט
+.\observer\run_simple.ps1
 ```
 
 ### בנייה ידנית:
@@ -125,11 +138,19 @@ cmake --build . --config Release
 
 ### הרצת בדיקות:
 ```powershell
-# לאחר בנייה
-.\build\Release\kungfu_chess_tests.exe
+# הרץ בדיקות
+.\run_tests_fixed.ps1
+
+# או ידנית
+.\build\Release\tests.exe
 ```
 
 ## שימוש במשחק
+
+### ארכיטקטורה Client-Server:
+- **שרת**: מנהל את לוגיקת המשחק ומתאם בין הלקוחות
+- **לקוח**: מציג גרפיקה ומקבל קלט משחקן
+- **Observer**: מערכת מעקב ודיווח נפרדת
 
 ### בקרות:
 - **שחקן 1 (לבן)**: מקשי חצים + Enter - סמן ירוק, בחירה כחולה
@@ -137,8 +158,8 @@ cmake --build . --config Release
 - **ESC**: יציאה מהמשחק
 
 ### מהלך המשחק:
-1. המשחק מתחיל עם כלי שחמט סטנדרטיים
-2. שני שחקנים משחקים במקביל עם בקרות נפרדות
+1. הרץ שרת ראשון
+2. הרץ 2 לקוחות (הראשון יהיה לבן, השני שחור)
 3. כל כלי עובר דרך מצבים שונים (idle → move → rest)
 4. אנימציות רציפות לכל תנועה
 5. מערכת קול ואפקטים
@@ -220,4 +241,4 @@ ls assets/pieces/
 
 ## רישיון
 
-פרויקט לימודי - CTD BootCamp 2025
+אתגר פיתוח- CTD BootCamp 2025

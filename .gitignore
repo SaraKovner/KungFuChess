@@ -5,6 +5,11 @@ build/
 external/
 OpenCV_451/
 
+# Unused/duplicate directories
+src/
+KungFuChess_Client/
+KungFuChess_Distribution/
+
 # IDE files
 .vscode/
 .vs/
